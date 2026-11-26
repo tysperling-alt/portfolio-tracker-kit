@@ -1,0 +1,451 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "analyze-stock/valuation-record.schema.json",
+  "title": "analyze-stock valuations file",
+  "description": "One file per ticker at data/valuations/<TICKER>.json (a dot in the ticker becomes a dash in the file name). scripts/record.py is the only writer. All rates, returns, probabilities, and portfolio weights are decimals: 0.10 means 10%. Prices and values are per share in the record's currency. Cross-field rules that this schema cannot express are listed in references/output-schema.md and enforced by scripts/record.py.",
+  "type": "object",
+  "required": ["schema_version", "ticker", "records"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"enum": ["1.0", "2.0"], "description": "2.0 from v9. Files with 1.0 records stay valid."},
+    "ticker": {"$ref": "#/$defs/ticker"},
+    "records": {"type": "array", "items": {"$ref": "#/$defs/record"}, "description": "Oldest first. The tracker reads the newest by date."},
+    "superseded_records": {"type": "array", "items": {"type": "object"}, "description": "Records replaced by a same-day rerun. Kept for history. Readers ignore them."}
+  },
+  "$defs": {
+    "ticker": {"type": "string", "pattern": "^[A-Z0-9.\\-]{1,12}$"},
+    "date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "date_or_null": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "datetime": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}", "description": "ISO 8601 with a time zone offset."},
+    "number_or_null": {"type": ["number", "null"]},
+    "string_or_null": {"type": ["string", "null"]},
+    "probability": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+    "string_list": {"type": "array", "items": {"type": "string"}},
+
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "ticker", "company_name", "asset_type", "date", "mode", "currency",
+                   "report_path", "information_cutoff", "price_isolation", "settings_used", "lock", "values",
+                   "rates", "grades", "confidence", "confidence_detail", "thesis", "forecasts", "milestones",
+                   "change_conditions", "sources", "bands", "accountability",
+                   "audit", "rating", "next_review"],
+      "properties": {
+        "schema_version": {"enum": ["1.0", "2.0"], "description": "1.0: records before v9. 2.0: verdict bands, range_only, price-implied return, expectations test. New fields are optional in the schema so 1.0 records stay valid; scripts/record.py requires them on 2.0 records."},
+        "ticker": {"$ref": "#/$defs/ticker"},
+        "company_name": {"type": "string", "minLength": 1},
+        "asset_type": {"enum": ["operating_company", "financial", "real_estate", "holding_company", "fund", "other"]},
+        "date": {"$ref": "#/$defs/date", "description": "Analysis date, in the owner's local time zone."},
+        "mode": {"enum": ["full", "refresh"]},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+        "report_path": {"type": "string", "description": "Human report, relative to the project folder."},
+        "model_path": {"$ref": "#/$defs/string_or_null", "description": "Model file for scripts/dcf.py, or the custom calculation script."},
+        "information_cutoff": {"$ref": "#/$defs/date", "description": "Date of the newest evidence used."},
+        "latest_filing_used": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "form": {"type": "string"},
+            "period_end": {"$ref": "#/$defs/date_or_null"},
+            "filed": {"$ref": "#/$defs/date_or_null"}
+          }
+        },
+
+        "price_isolation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "structure", "exposures"],
+          "properties": {
+            "status": {"enum": ["clean", "incidental", "exposed", "not_applicable"],
+                       "description": "clean: no price information seen during research. incidental: price data printed in the company's own filings (buyback or offering prices, quarter-end prices in guidance), or old or indirect price data, seen and not used. exposed: a quote, market value, multiple, price target, or valuation opinion was seen before the lock. not_applicable: funds."},
+            "structure": {"enum": ["subagent", "single_agent", "not_applicable"],
+                          "description": "subagent: a separate price-blind agent built the lock. single_agent: one agent did both phases in order."},
+            "exposures": {"type": "array", "items": {
+              "type": "object", "additionalProperties": false, "required": ["what", "source", "current"],
+              "properties": {"what": {"type": "string"}, "source": {"type": "string"}, "current": {"type": "boolean"},
+                             "kind": {"enum": ["company_filing", "quote", "market_value", "multiple", "price_target", "valuation_opinion", "price_news", "other"],
+                                      "description": "v9. company_filing: a price printed in the company's own filing; always incidental. The other kinds make a current exposure 'exposed'."}}}},
+            "orchestrator_knew_price_before_lock": {"type": ["boolean", "null"], "description": "Set at append time. True when the agent running the skill had seen the price before the lock existed. The valuer never receives it."},
+            "revised_after_price": {"type": ["boolean", "null"], "description": "Set at append time. True when the lock was revised after the price audit."}
+          }
+        },
+
+        "settings_used": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hurdle_rate", "horizon_years", "equity_risk_premium", "risk_free_floor", "settings_source"],
+          "properties": {
+            "hurdle_rate": {"type": "number"},
+            "horizon_years": {"type": "integer"},
+            "equity_risk_premium": {"type": "number"},
+            "risk_free_floor": {"type": "number"},
+            "trim_premium_share": {"type": "number"},
+            "sell_premium_share": {"type": "number"},
+            "settings_source": {"type": "string"},
+            "settings_version": {"type": "string"},
+            "verdict_bands": {"type": "object", "description": "Retired. Kept so v9 records validate."},
+            "action_bands": {"type": "object", "description": "the fixed Buy / Hold / Sell ratios."},
+            "range_only": {"type": "object"}
+          }
+        },
+
+        "lock": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["locked_at", "first_locked_at", "lock_sha256", "valuation_status", "revisions"],
+          "properties": {
+            "locked_at": {"$ref": "#/$defs/datetime", "description": "When this lock file was stamped. A revision gets a new time."},
+            "first_locked_at": {"$ref": "#/$defs/datetime", "description": "When the first lock for this run was stamped. Revisions keep it."},
+            "lock_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "Hash of every price-blind field in this record. scripts/record.py verify recomputes it."},
+            "valuation_status": {"enum": ["resolved", "conditional", "range_only", "unresolved", "not_applicable"],
+                                 "description": "resolved: a supported value. conditional: a value that holds only if the stated condition is true. range_only (v9): values exist but the bull case supplies most of fair value or the range is very wide; the status is kept for history and the Buy / Hold / Sell call still uses the weighted value. unresolved: evidence too weak to value; values and bands are null. not_applicable: funds."},
+            "conditions": {"$ref": "#/$defs/string_or_null", "description": "Required when valuation_status is conditional."},
+            "valuation_basis": {"enum": ["equity", "firm", null]},
+            "primary_method": {"$ref": "#/$defs/string_or_null"},
+            "secondary_method": {"$ref": "#/$defs/string_or_null"},
+            "secondary_value": {"$ref": "#/$defs/number_or_null"},
+            "method_notes": {"$ref": "#/$defs/string_or_null", "description": "Assumptions the two methods share, and why they agree or differ."},
+            "model_sha256": {"$ref": "#/$defs/string_or_null"},
+            "revisions": {"type": "array", "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["revised_at", "reason_type", "reason", "prior_lock_sha256", "prior_weighted_value", "after_price"],
+              "properties": {
+                "revised_at": {"$ref": "#/$defs/datetime"},
+                "reason_type": {"enum": ["evidence", "error", "method"]},
+                "reason": {"type": "string", "minLength": 10},
+                "prior_lock_sha256": {"type": "string"},
+                "prior_weighted_value": {"$ref": "#/$defs/number_or_null"},
+                "after_price": {"type": "boolean"}
+              }}}
+          }
+        },
+
+        "values": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bear", "base", "bull", "weighted", "stress", "probabilities"],
+          "description": "Per share, as of the analysis date. Null when valuation is unresolved or not applicable.",
+          "properties": {
+            "bear": {"$ref": "#/$defs/number_or_null"},
+            "base": {"$ref": "#/$defs/number_or_null", "description": "Most likely value: the best-supported outlook, not a conservative floor."},
+            "bull": {"$ref": "#/$defs/number_or_null"},
+            "weighted": {"$ref": "#/$defs/number_or_null", "description": "Probability-weighted value: my value, the one number the Buy / Hold / Sell rule uses."},
+            "stress": {"$ref": "#/$defs/number_or_null", "description": "Value in a severe but plausible case. Not part of the weighting."},
+            "probabilities": {
+              "type": ["object", "null"], "additionalProperties": false, "required": ["bear", "base", "bull"],
+              "properties": {"bear": {"$ref": "#/$defs/probability"}, "base": {"$ref": "#/$defs/probability"}, "bull": {"$ref": "#/$defs/probability"}}},
+            "summaries": {
+              "type": ["object", "null"], "additionalProperties": false,
+              "properties": {"bear": {"type": "string"}, "base": {"type": "string"}, "bull": {"type": "string"}, "stress": {"type": "string"}}},
+            "terminal_share_base": {"$ref": "#/$defs/number_or_null", "description": "Share of the base value that comes from years after the forecast."},
+            "diluted_shares": {"$ref": "#/$defs/number_or_null"},
+            "probability_basis": {
+              "type": ["object", "null"], "additionalProperties": false, "required": ["base_rate", "source"],
+              "description": "v9. Required when the probabilities differ from the defaults: the written base rate that justifies the move.",
+              "properties": {"base_rate": {"type": "string", "minLength": 10}, "source": {"type": "string", "minLength": 5},
+                             "not_also_in_forecast": {"type": "boolean"}}},
+            "range_test": {
+              "type": ["object", "null"], "additionalProperties": false,
+              "description": "v9. The range-only test: bull share of fair value and (bull - bear) / fair value.",
+              "properties": {"trips": {"type": "boolean"}, "bull_share": {"$ref": "#/$defs/number_or_null"}, "spread": {"$ref": "#/$defs/number_or_null"}}}
+          }
+        },
+
+        "rates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["risk_free_observed", "risk_free_used", "risk_tier", "discount_rate", "required_return"],
+          "properties": {
+            "risk_free_observed": {"$ref": "#/$defs/number_or_null", "description": "10-year government bond yield on the analysis date."},
+            "risk_free_source": {"$ref": "#/$defs/string_or_null"},
+            "risk_free_used": {"$ref": "#/$defs/number_or_null"},
+            "risk_tier": {"enum": ["defensive", "average", "cyclical_or_levered", "speculative", null]},
+            "risk_tier_reason": {"$ref": "#/$defs/string_or_null"},
+            "discount_rate": {"$ref": "#/$defs/number_or_null", "description": "Risk-based rate for the stock's cash flows to shareholders."},
+            "required_return": {"$ref": "#/$defs/number_or_null", "description": "The larger of the hurdle rate and the discount rate."}
+          }
+        },
+
+        "grades": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["quality", "management", "cash_reliability"],
+          "properties": {
+            "quality": {"enum": ["Exceptional", "High", "Good", "Mixed", "Weak", "Poor", null]},
+            "management": {"enum": ["A", "B", "C", "D", "F", null]},
+            "cash_reliability": {"enum": ["High", "Medium", "Low", null]},
+            "distributability": {"enum": ["High", "Medium", "Low", null]}
+          }
+        },
+
+        "confidence": {"enum": ["High", "Medium", "Low", "Very low", null], "description": "Confidence in the value. Sets the error cushion in the bands."},
+        "confidence_detail": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["points", "total_points", "override", "evidence_gaps"],
+          "properties": {
+            "points": {
+              "type": ["object", "null"], "additionalProperties": false,
+              "properties": {"scenario_spread": {"type": "integer"}, "terminal_share": {"type": "integer"},
+                             "cash_reliability": {"type": "integer"}, "evidence": {"type": "integer"}}},
+            "total_points": {"type": ["integer", "null"]},
+            "computed_level": {"enum": ["High", "Medium", "Low", "Very low", null]},
+            "override": {
+              "type": ["object", "null"], "additionalProperties": false, "required": ["level", "reason"],
+              "properties": {"level": {"enum": ["High", "Medium", "Low", "Very low"]}, "reason": {"type": "string", "minLength": 10}}},
+            "evidence_gaps": {"$ref": "#/$defs/string_list"}
+          }
+        },
+
+        "thesis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["decisive_questions", "key_assumptions", "key_risks", "decision_sensitive_assumptions"],
+          "properties": {
+            "summary": {"$ref": "#/$defs/string_or_null"},
+            "decisive_questions": {"type": "array", "maxItems": 3, "items": {
+              "type": "object", "additionalProperties": false, "required": ["question", "answer", "evidence_strength"],
+              "properties": {"question": {"type": "string"}, "answer": {"type": "string"},
+                             "evidence_strength": {"enum": ["strong", "moderate", "weak"]}}}},
+            "key_assumptions": {"$ref": "#/$defs/string_list"},
+            "key_risks": {"$ref": "#/$defs/string_list"},
+            "decision_sensitive_assumptions": {"$ref": "#/$defs/string_list"}
+          }
+        },
+
+        "forecasts": {"type": "array", "description": "Operating forecasts a later run can grade against reported results.", "items": {
+          "type": "object", "additionalProperties": false,
+          "required": ["id", "metric", "period_end", "unit", "low", "base", "high"],
+          "properties": {
+            "id": {"type": "string", "pattern": "^F[0-9]+$"},
+            "metric": {"type": "string"},
+            "period_end": {"$ref": "#/$defs/date"},
+            "unit": {"type": "string"},
+            "low": {"type": "number"}, "base": {"type": "number"}, "high": {"type": "number"}
+          }}},
+
+        "milestones": {"type": "array", "items": {
+          "type": "object", "additionalProperties": false,
+          "required": ["id", "metric", "target", "by_date", "status"],
+          "properties": {
+            "id": {"type": "string", "pattern": "^M[0-9]+$"},
+            "metric": {"type": "string"},
+            "target": {"type": "string", "description": "A testable statement with a number, for example 'owner cash per share of at least 4.00'."},
+            "by_date": {"$ref": "#/$defs/date"},
+            "status": {"enum": ["open", "met", "missed", "dropped"]},
+            "note": {"$ref": "#/$defs/string_or_null"}
+          }}},
+
+        "change_conditions": {"type": "array", "items": {
+          "type": "object", "additionalProperties": false,
+          "required": ["id", "condition", "effect"],
+          "properties": {
+            "id": {"type": "string", "pattern": "^C[0-9]+$"},
+            "condition": {"type": "string", "description": "A testable event or threshold."},
+            "effect": {"enum": ["raise_value", "lower_value", "thesis_broken", "full_review"]}
+          }}},
+
+        "sources": {"type": "array", "items": {
+          "type": "object", "additionalProperties": false, "required": ["title"],
+          "properties": {"title": {"type": "string"}, "url": {"$ref": "#/$defs/string_or_null"}, "date": {"$ref": "#/$defs/string_or_null"}}}},
+
+        "bands": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fair_value", "buy_below", "trim_above", "sell_above"],
+          "description": "Computed by scripts/bands.py from price-blind inputs. Null when there is no supported value.",
+          "properties": {
+            "fair_value": {"$ref": "#/$defs/number_or_null"},
+            "buy_below": {"$ref": "#/$defs/number_or_null"},
+            "trim_above": {"$ref": "#/$defs/number_or_null"},
+            "sell_above": {"$ref": "#/$defs/number_or_null"},
+            "buy_return_rate": {"$ref": "#/$defs/number_or_null"},
+            "trim_return_rate": {"$ref": "#/$defs/number_or_null"},
+            "sell_return_rate": {"$ref": "#/$defs/number_or_null"},
+            "error_cushion": {"$ref": "#/$defs/number_or_null"},
+            "horizon_years": {"type": ["integer", "null"]},
+            "buy_below_price": {"$ref": "#/$defs/number_or_null", "description": "Buy at or below this price (0.80 x my value)."},
+            "sell_above_price": {"$ref": "#/$defs/number_or_null", "description": "Sell at or above this price (1.20 x my value)."},
+            "underpriced_below": {"$ref": "#/$defs/number_or_null", "description": "v9 verdict band (retired). History only."},
+            "overpriced_above": {"$ref": "#/$defs/number_or_null", "description": "v9 verdict band (retired). History only."},
+            "verdict_ratio_low": {"$ref": "#/$defs/number_or_null"},
+            "verdict_ratio_high": {"$ref": "#/$defs/number_or_null"},
+            "range_low": {"$ref": "#/$defs/number_or_null", "description": "v9. The bear value, shown as the low end of the range."},
+            "range_high": {"$ref": "#/$defs/number_or_null", "description": "v9. The bull value, shown as the high end of the range."},
+            "valid_until": {"$ref": "#/$defs/date_or_null", "description": "After this date the tracker should mark the bands stale."}
+          }
+        },
+
+        "fund": {"type": ["object", "null"], "description": "Fund facts when asset_type is fund. See references/funds.md."},
+
+        "accountability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["prior_record_date", "forecast_grades", "milestone_updates", "change_conditions_tripped", "value_bridge", "lock_holds"],
+          "properties": {
+            "prior_record_date": {"$ref": "#/$defs/date_or_null", "description": "Date of the record this run graded. Null only when no prior record exists."},
+            "forecast_grades": {"type": "array", "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["forecast_id", "from_record_date", "actual"],
+              "properties": {
+                "forecast_id": {"type": "string"},
+                "from_record_date": {"$ref": "#/$defs/date"},
+                "actual": {"type": "number"},
+                "actual_source": {"$ref": "#/$defs/string_or_null"},
+                "metric": {"type": "string"}, "period_end": {"type": "string"}, "unit": {"type": "string"},
+                "forecast_low": {"type": "number"}, "forecast_base": {"type": "number"}, "forecast_high": {"type": "number"},
+                "error": {"$ref": "#/$defs/number_or_null", "description": "(actual - base) / |base|. Positive means the result beat the forecast."},
+                "within_range": {"type": "boolean"}
+              }}},
+            "milestone_updates": {"type": "array", "items": {
+              "type": "object", "additionalProperties": false, "required": ["id", "status"],
+              "properties": {"id": {"type": "string"}, "status": {"enum": ["open", "met", "missed", "dropped"]}, "note": {"$ref": "#/$defs/string_or_null"}}}},
+            "change_conditions_tripped": {"$ref": "#/$defs/string_list"},
+            "value_bridge": {
+              "type": ["object", "null"], "additionalProperties": false,
+              "required": ["prior_value", "time_roll", "rates", "shares_and_financing", "operations", "method", "new_value"],
+              "description": "Why the weighted value changed since the prior record. The six parts sum to new_value.",
+              "properties": {
+                "prior_value": {"type": "number"}, "time_roll": {"type": "number"}, "rates": {"type": "number"},
+                "shares_and_financing": {"type": "number"}, "operations": {"type": "number"}, "method": {"type": "number"},
+                "new_value": {"type": "number"}, "note": {"$ref": "#/$defs/string_or_null"}
+              }},
+            "lock_holds": {"type": ["boolean", "null"], "description": "Refresh only. True when the prior analysis still stands and was rolled forward."},
+            "lessons": {"$ref": "#/$defs/string_or_null"},
+            "decision_grade": {
+              "type": ["object", "null"], "additionalProperties": false,
+              "required": ["graded_record_date", "rating_then", "verdict", "error_type"],
+              "description": "Added after the price audit. Grades the prior decision against the alternative named at the time.",
+              "properties": {
+                "graded_record_date": {"$ref": "#/$defs/date"},
+                "rating_then": {"type": "string"},
+                "alternative_name": {"$ref": "#/$defs/string_or_null"},
+                "stock_total_return": {"$ref": "#/$defs/number_or_null"},
+                "alternative_total_return": {"$ref": "#/$defs/number_or_null"},
+                "verdict": {"type": "string"},
+                "error_type": {"enum": ["none", "forecast", "model", "allocation", "too_early"]}
+              }}
+          }
+        },
+
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["price", "price_observed_at", "price_source", "margin_of_safety", "zone", "gap_audit"],
+          "description": "Price-dependent. Never shown to the valuer.",
+          "properties": {
+            "price": {"type": "number", "exclusiveMinimum": 0, "description": "Price observed at audit time."},
+            "price_observed_at": {"$ref": "#/$defs/datetime"},
+            "price_source": {"type": "string"},
+            "market_cap": {"$ref": "#/$defs/number_or_null"},
+            "margin_of_safety": {"$ref": "#/$defs/number_or_null", "description": "1 - price / fair value. Negative when price is above fair value."},
+            "zone": {"enum": ["buy zone", "hold zone", "trim zone", "sell zone", "no bands"], "description": "Price against the action prices. From v9 it feeds the monthly letter only."},
+            "price_to_value": {"$ref": "#/$defs/number_or_null", "description": "v9. Price / fair value."},
+            "verdict": {"enum": ["Buy", "Hold", "Sell", "Underpriced", "Fairly priced", "Overpriced", "Cannot be valued with confidence", null],
+                        "description": "Buy, Hold, or Sell by the fixed rule on my value. The four older strings appear only in records made under an older rule."},
+            "confidence_after_audit": {"enum": ["High", "Medium", "Low", "Very low", null],
+                                       "description": "v9. The lock's confidence, one level lower when a large business disagreement with the price has no named evidence. The value never moves."},
+            "verdict_bands_after_audit": {
+              "type": ["object", "null"], "additionalProperties": false,
+              "description": "It holds buy_below_price and sell_above_price. Older records hold the retired v9 bands.",
+              "properties": {"buy_below_price": {"$ref": "#/$defs/number_or_null"}, "sell_above_price": {"$ref": "#/$defs/number_or_null"},
+                             "underpriced_below": {"$ref": "#/$defs/number_or_null"}, "overpriced_above": {"$ref": "#/$defs/number_or_null"},
+                             "verdict_ratio_low": {"$ref": "#/$defs/number_or_null"}, "verdict_ratio_high": {"$ref": "#/$defs/number_or_null"}}},
+            "price_implied_return": {"$ref": "#/$defs/number_or_null", "description": "v9 headline. Yearly return from buying at the audit price if the weighted forecast comes true. No assumption about the future price."},
+            "price_implied_return_note": {"$ref": "#/$defs/string_or_null"},
+            "return_comparison": {
+              "type": ["object", "null"], "additionalProperties": false,
+              "properties": {"discount_rate": {"$ref": "#/$defs/number_or_null"}, "risk_free_observed": {"$ref": "#/$defs/number_or_null"},
+                             "implied_minus_discount_rate": {"$ref": "#/$defs/number_or_null"}, "implied_minus_risk_free": {"$ref": "#/$defs/number_or_null"}}},
+            "expectations": {
+              "type": ["object", "null"], "additionalProperties": false, "required": ["drivers", "gap_sources"],
+              "description": "v9 expectations test (improvement 1). What the price assumes, what consensus expects, what the base case assumes, and where each large gap comes from.",
+              "properties": {
+                "drivers": {"type": "array", "items": {
+                  "type": "object", "additionalProperties": false,
+                  "required": ["driver", "price_implies", "consensus_next_two_years", "base_case", "evidence_for_difference"],
+                  "properties": {"driver": {"type": "string"}, "price_implies": {"type": "string"},
+                                 "consensus_next_two_years": {"$ref": "#/$defs/string_or_null"},
+                                 "base_case": {"type": "string"}, "evidence_for_difference": {"$ref": "#/$defs/string_or_null"}}}},
+                "gap_sources": {"type": "array", "items": {
+                  "type": "object", "additionalProperties": false, "required": ["type", "dollars_per_share", "explanation"],
+                  "properties": {"type": {"enum": ["input_error", "method_convention", "business_disagreement"]},
+                                 "dollars_per_share": {"type": "number"},
+                                 "explanation": {"type": "string", "minLength": 10},
+                                 "evidence": {"$ref": "#/$defs/string_or_null", "description": "Required for a business disagreement to keep confidence; null lowers confidence one level."}}}}
+              }},
+            "expected_return_5y": {"$ref": "#/$defs/number_or_null", "description": "1.0 records only."},
+            "expected_return_10y": {"$ref": "#/$defs/number_or_null", "description": "Convergence figure: the yearly return IF the price falls to fair value within ten years. Not the headline from v9."},
+            "scenario_returns_10y": {
+              "type": ["object", "null"], "additionalProperties": false,
+              "properties": {"bear": {"$ref": "#/$defs/number_or_null"}, "base": {"$ref": "#/$defs/number_or_null"}, "bull": {"$ref": "#/$defs/number_or_null"}}},
+            "return_from_gap_closing_10y": {"$ref": "#/$defs/number_or_null", "description": "Part of the 10-year return that needs price to meet value."},
+            "implied_growth_shift": {"$ref": "#/$defs/number_or_null", "description": "Yearly growth shift to the base case that the price implies. From dcf.py --solve-price."},
+            "implied_expectations": {"$ref": "#/$defs/string_or_null", "description": "Plain-English statement of what the price requires."},
+            "gap_audit": {
+              "type": "object", "additionalProperties": false, "required": ["required"],
+              "properties": {
+                "required": {"type": "boolean"},
+                "opposing_case": {"$ref": "#/$defs/string_or_null"},
+                "resolving_evidence": {"$ref": "#/$defs/string_or_null"},
+                "outcome": {"$ref": "#/$defs/string_or_null"}
+              }}
+          }
+        },
+
+        "rating": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "driver", "rationale"],
+          "properties": {
+            "label": {"enum": ["Strong Buy", "Buy/Accumulate", "Starter Position", "Hold/Watchlist", "Avoid/Do Not Chase", "Trim", "Sell"]},
+            "driver": {"enum": ["price", "fundamentals", "uncertainty", "portfolio fit"]},
+            "rationale": {"type": "string", "minLength": 10},
+            "no_buy_reason": {"enum": ["below required return", "expected loss", "insufficient evidence", null],
+                              "description": "Required when the label is Hold/Watchlist or Avoid/Do Not Chase."}
+          }
+        },
+
+        "decision": {
+          "type": "object",
+          "description": "Required on 1.0 records. Optional from v9 (2.0): allocation, size, and per-account actions moved to the monthly letter.",
+          "additionalProperties": false,
+          "required": ["currently_owned", "alternative", "suggested_size_range", "size_basis", "account_actions", "action_summary"],
+          "properties": {
+            "currently_owned": {"type": "boolean"},
+            "current_weight": {"$ref": "#/$defs/number_or_null", "description": "Position as a share of long-term investments excluding reserves, at audit time."},
+            "alternative": {
+              "type": "object", "additionalProperties": false, "required": ["name", "reason"],
+              "properties": {"name": {"type": "string"}, "ticker": {"$ref": "#/$defs/string_or_null"}, "reason": {"type": "string"},
+                             "expected_return": {"$ref": "#/$defs/number_or_null"}}},
+            "suggested_size_range": {
+              "type": "object", "additionalProperties": false, "required": ["low", "high"],
+              "properties": {"low": {"type": "number", "minimum": 0, "maximum": 1}, "high": {"type": "number", "minimum": 0, "maximum": 1}}},
+            "size_basis": {"const": "long_term_investments_excluding_reserves"},
+            "size_adjustments": {"$ref": "#/$defs/string_or_null"},
+            "account_actions": {"type": "array", "description": "One row per account that holds the stock or could buy it. Value is the same in every account. Action is not.", "items": {
+              "type": "object", "additionalProperties": false, "required": ["account_id", "action", "reason"],
+              "properties": {
+                "account_id": {"type": "string"},
+                "tax_type": {"$ref": "#/$defs/string_or_null"},
+                "action": {"enum": ["add", "hold", "trim", "sell", "none"]},
+                "reason": {"type": "string"}
+              }}},
+            "action_summary": {"type": "string", "minLength": 10}
+          }
+        },
+
+        "next_review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["due"],
+          "properties": {
+            "due": {"$ref": "#/$defs/date"},
+            "next_earnings_expected": {"$ref": "#/$defs/date_or_null"},
+            "note": {"$ref": "#/$defs/string_or_null"}
+          }
+        }
+      }
+    }
+  }
+}

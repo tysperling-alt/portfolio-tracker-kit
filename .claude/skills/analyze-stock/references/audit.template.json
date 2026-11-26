@@ -1,0 +1,40 @@
+{
+  "orchestrator_knew_price_before_lock": false,
+
+  "audit": {
+    "price": 0.0,
+    "price_observed_at": "YYYY-MM-DDTHH:MM:SS-08:00",
+    "price_source": "<data/prices.json, or the quote page used>",
+    "market_cap": null,
+    "implied_expectations": "<plain English: the growth, margins, reinvestment, and length of advantage the price requires>",
+    "expectations": {
+      "drivers": [
+        {"driver": "<main driver 1, for example revenue growth to 2035>", "price_implies": "<what the price needs>", "consensus_next_two_years": "<what analysts expect, with source and date>", "base_case": "<what the base case assumes>", "evidence_for_difference": "<the evidence, or null if none>"},
+        {"driver": "<main driver 2>", "price_implies": "", "consensus_next_two_years": null, "base_case": "", "evidence_for_difference": null}
+      ],
+      "gap_sources": [
+        {"type": "business_disagreement", "dollars_per_share": 0.0, "explanation": "<what you and the market expect differently>", "evidence": "<named evidence, or null: null lowers confidence one level>"}
+      ]
+    },
+    "gap_audit": {
+      "opposing_case": null,
+      "resolving_evidence": null,
+      "outcome": null
+    }
+  },
+
+  "rating": {
+    "label": "Hold/Watchlist",
+    "driver": "price",
+    "rationale": "<one or two sentences>",
+    "no_buy_reason": "below required return"
+  },
+
+  "decision_grade": null,
+
+  "next_review": {
+    "due": "YYYY-MM-DD",
+    "next_earnings_expected": null,
+    "note": null
+  }
+}

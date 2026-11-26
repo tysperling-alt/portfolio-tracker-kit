@@ -1,0 +1,4 @@
+{
+  "_about": "Tickers you want priced and watched but do not own. Add {\"ticker\": \"XYZ\", \"name\": \"...\", \"reason\": \"...\"} entries. refresh_prices.py prices them; analyze-stock can value them.",
+  "tickers": []
+}

@@ -1,0 +1,33 @@
+{
+  "_about": "FICTIONAL sample. The owner's stated investing rules, in their own words, with dates. A rule here overrides the financial picture where they differ. Claude creates data/investor-profile.json from a few short questions on first run.",
+  "updated": "2026-01-02",
+  "rules": [
+    {
+      "id": "retirement-horizon",
+      "date": "2026-01-02",
+      "account_id": "retirement-ira",
+      "rule": "Retirement money; no withdrawals for 25+ years.",
+      "owner_words": "I won't touch the IRA until I retire.",
+      "implication": "Can hold mostly stocks and ride out deep falls."
+    },
+    {
+      "id": "goal-fund",
+      "date": "2026-01-02",
+      "account_id": "brokerage",
+      "rule": "Up to half of the brokerage account may be needed for a goal in about 5 years.",
+      "owner_words": "I might use some of it for a big purchase in a few years.",
+      "implication": "Treat up to 50% of the brokerage account as near-term money in the account-fit check."
+    },
+    {
+      "id": "single-stock-limit",
+      "date": "2026-01-02",
+      "account_id": null,
+      "rule": "No single company above 10% of long-term investments.",
+      "owner_words": "I don't want any one stock to sink me.",
+      "implication": "Caps the size range for every stock at 10%."
+    }
+  ],
+  "open_questions": [
+    "How much of the brokerage account is the goal money: closer to 25% or 50%?"
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "ticker": "TICKER",
+  "company_name": "<legal name>",
+  "asset_type": "operating_company",
+  "date": "YYYY-MM-DD",
+  "mode": "full",
+  "currency": "USD",
+  "report_path": "analyses/<TICKER>/<DATE>.md",
+  "model_path": "analyses/<TICKER>/<DATE>-model.json",
+  "information_cutoff": "YYYY-MM-DD",
+  "latest_filing_used": {"form": "10-Q", "period_end": "YYYY-MM-DD", "filed": "YYYY-MM-DD"},
+
+  "price_isolation": {
+    "status": "clean",
+    "structure": "subagent",
+    "exposures": [
+      {"what": "<what you saw>", "source": "<document and section>", "current": false, "kind": "company_filing"}
+    ]
+  },
+
+  "lock": {
+    "valuation_status": "resolved",
+    "conditions": null,
+    "primary_method": "<for example: discounted owner cash to shareholders, 10 years plus terminal value>",
+    "secondary_method": "<for example: earnings power value plus value of growth>",
+    "secondary_value": null,
+    "method_notes": "<assumptions the two methods share; why they agree or differ>"
+  },
+
+  "values": {
+    "probability_basis": null,
+    "_probability_basis_note": "Only when the probabilities differ from 25/50/25: {\"base_rate\": \"<what the rate says>\", \"source\": \"<row in references/base-rates.md or a dated source>\", \"not_also_in_forecast\": true}. Delete this note key before locking.",
+    "summaries": {
+      "bear": "<one or two sentences: the causal story>",
+      "base": "<one or two sentences>",
+      "bull": "<one or two sentences>",
+      "stress": "<one or two sentences>"
+    }
+  },
+
+  "rates": {
+    "risk_free_observed": 0.0,
+    "risk_free_source": "<page and date>",
+    "risk_tier": "average",
+    "risk_tier_reason": "<the evidence for the tier>"
+  },
+
+  "grades": {
+    "quality": "Good",
+    "management": "B",
+    "cash_reliability": "Medium",
+    "distributability": "High"
+  },
+
+  "confidence_detail": {
+    "evidence_gaps": ["<a fact you needed and could not find>"],
+    "override": null
+  },
+
+  "thesis": {
+    "summary": "<two or three sentences: why this business will or will not earn good returns for owners>",
+    "decisive_questions": [
+      {"question": "<question 1>", "answer": "<answer>", "evidence_strength": "strong"},
+      {"question": "<question 2>", "answer": "<answer>", "evidence_strength": "moderate"},
+      {"question": "<question 3>", "answer": "<answer>", "evidence_strength": "weak"}
+    ],
+    "key_assumptions": ["<assumption with its number>"],
+    "key_risks": ["<risk and where the model counts it>"],
+    "decision_sensitive_assumptions": ["<assumption whose plausible change moves the weighted value 15% or more>"]
+  },
+
+  "forecasts": [
+    {"id": "F1", "metric": "<for example: Revenue, fiscal year 20XX>", "period_end": "YYYY-MM-DD", "unit": "<USD millions>", "low": 0, "base": 0, "high": 0}
+  ],
+  "milestones": [
+    {"id": "M1", "metric": "<metric>", "target": "<testable statement with a number>", "by_date": "YYYY-MM-DD", "status": "open", "note": null}
+  ],
+  "change_conditions": [
+    {"id": "C1", "condition": "<testable event or threshold>", "effect": "thesis_broken"},
+    {"id": "C2", "condition": "<testable event or threshold>", "effect": "raise_value"}
+  ],
+
+  "sources": [
+    {"title": "<document name>", "url": "<address>", "date": "YYYY-MM-DD"}
+  ],
+
+  "accountability": {
+    "_notes": "This is the shape for a first analysis (no prior record). When a prior record exists, fill this block as shown in references/accountability.md, Part A. Delete this _notes key before locking.",
+    "prior_record_date": null,
+    "forecast_grades": [],
+    "milestone_updates": [],
+    "change_conditions_tripped": [],
+    "value_bridge": null,
+    "lock_holds": null,
+    "lessons": null
+  }
+}

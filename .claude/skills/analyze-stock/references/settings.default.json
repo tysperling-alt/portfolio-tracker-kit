@@ -1,0 +1,66 @@
+{
+  "_about": "Default settings for analyze-stock. To change one, copy only that key into context/analysis-settings.json. Values there override these. All rates are decimals: 0.10 means 10% a year. See references/bands.md for what each one does.",
+  "settings_version": "2.0",
+
+  "risk_free_floor": 0.04,
+  "_equity_risk_premium_about": "3.75%, a little below Damodaran's market-implied premium (4.23% at the start of 2026). At 4.5%, a random sample of S&P 500 stocks valued with this method priced at a median of about 1.14 times value with none underpriced; 3.75% brought the median to about 0.99. If record.py calibrate keeps warning across your own holdings, test a random sample of large companies and adjust this one number, never single stocks.",
+  "equity_risk_premium": 0.0375,
+  "risk_tier_adjustments": {
+    "defensive": -0.01,
+    "average": 0.0,
+    "cyclical_or_levered": 0.015,
+    "speculative": 0.03
+  },
+  "rate_update_threshold": 0.005,
+
+  "_action_bands_about": "One fixed rule for every stock. My value is the probability-weighted value (values.weighted). Buy when the price is at or below buy_below x my value. Sell when the price is at or above sell_above x my value. Hold in between. Confidence is recorded but does not widen the rule. A range-only value gets a call from its weighted value too. Change the two ratios in context/analysis-settings.json if you want a wider or narrower Hold zone.",
+  "action_bands": {"buy_below": 0.80, "sell_above": 1.20},
+
+  "_verdict_bands_retired": "Retired. An older method version used confidence-widened verdict bands (Morningstar's 5-star and 1-star thresholds: 80/125% for High confidence down to 50/175% for Very low). The wide bands left most stocks 'fairly priced', so the method moved to one committed call per stock. Old records keep their stored bands as history; nothing reads them.",
+
+  "_range_only_about": "record.py lock refuses 'resolved' or 'conditional' when the bull case supplies more than this share of fair value (bull probability x bull value / fair value), or when (bull - bear) / fair value is at or above the spread limit. The lock must then use 'range_only'. The status is kept for history; the call still uses the weighted value.",
+  "range_only": {"max_bull_share_of_value": 0.60, "max_spread_to_value": 2.0},
+
+  "_index_expected_return_about": "One expected yearly return for a broad US stock index fund, used only by the monthly letter. 8.4% is Damodaran's market-implied expected return for the S&P 500 at the start of 2026 (8.41%: implied equity risk premium 4.23% plus the 10-year Treasury yield), from his 'Data Update 2 for 2026', 23 January 2026. Vanguard's model (30 September 2026) is lower, 4.8% to 6.8%; the letter should mention that range when the comparison decides a move. Update both once a year.",
+  "index_expected_return": 0.084,
+
+  "_hurdle_about": "The hurdle rate and the buy, trim, and sell prices feed the monthly letter only. They do not set the verdict.",
+  "hurdle_rate": 0.10,
+  "horizon_years": 10,
+
+  "error_cushion": {
+    "High": 0.05,
+    "Medium": 0.15,
+    "Low": 0.25,
+    "Very low": 0.35
+  },
+  "trim_premium_share": 0.5,
+  "sell_premium_share": 0.0,
+  "bands_valid_days": 45,
+
+  "default_probabilities": {"bear": 0.25, "base": 0.5, "bull": 0.25},
+  "large_gap_threshold": 0.40,
+
+  "_calibration_about": "record.py calibrate warns at the top when the middle price-to-value ratio across valued stocks is outside this range, or when the count of prices above the bull case and the count below the bear case differ by more than max_tail_imbalance.",
+  "calibration_warning": {"median_ratio_low": 0.80, "median_ratio_high": 1.25, "max_tail_imbalance": 3},
+
+  "_refresh_about": "A full analysis runs once a year. A refresh runs after each earnings report and when the price crosses a call price. The monthly check is record.py monthly-check, a script with no agent.",
+  "refresh": {
+    "full_review_after_months": 12,
+    "escalate_value_change": 0.15,
+    "refresh_after_earnings": true,
+    "refresh_on_verdict_change": true
+  },
+
+  "position_review_weight": 0.10,
+
+  "blocked_source_domains": [
+    "finance.yahoo.com", "google.com/finance", "seekingalpha.com", "marketwatch.com",
+    "morningstar.com", "fool.com", "zacks.com", "tipranks.com", "stockanalysis.com",
+    "macrotrends.net", "gurufocus.com", "simplywall.st", "investing.com", "barchart.com",
+    "finviz.com", "tradingview.com", "marketbeat.com", "benzinga.com", "cnbc.com/quotes",
+    "bloomberg.com/quote", "wsj.com/market-data", "nasdaq.com/market-activity",
+    "koyfin.com", "companiesmarketcap.com", "alphaspread.com", "valueinvesting.io",
+    "robinhood.com", "public.com/stocks", "investopedia.com/markets", "barrons.com/market-data"
+  ]
+}

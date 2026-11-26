@@ -1,0 +1,1258 @@
+<meta name="dash-one-writer">
+<meta name="dash-form" content="dashboard">
+<style>
+  /* Bull look: dark page, photo hero, a photo tile per company, full-page analysis view.
+     Every number on the page is computed from the datasets at load, so a price refresh updates all of it. */
+  html, body { background: #0A0B0D; }
+  .pt { --bg: #0A0B0D; --panel: #111317; --panel2: #0E1013; --line: #23262D; --line2: #1A1D22; --fg: #ECE8E1; --fg2: #C9CED6; --muted: #9AA2AE; --buy: #9CC4FF; --buy-bg: #121C2B; --buy-line: #3B5A8A; --sell: #F4B37A; --sell-bg: #231A12; --sell-line: #7A4E2A; --hold: #C2C7CF;
+    display: flex; flex-direction: column; gap: 72px; background: var(--bg); color: var(--fg); font-family: var(--font-anthropic-sans), Inter, system-ui, sans-serif;
+    min-width: 0; max-width: 100%; overflow-x: clip; padding-bottom: 48px; }
+  .pt * { box-sizing: border-box; }
+  .pt [hidden] { display: none !important; }
+  .pt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .pt-stale { font-size: 11px; color: var(--sell); margin-left: 4px; }
+  .pt-in { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+  .pt h1, .pt h2, .pt h3 { margin: 0; font-weight: 500; letter-spacing: -0.02em; text-wrap: balance; }
+  .pt h2 { font-size: clamp(24px, 3.4vw, 32px); line-height: 1.15; }
+  .pt p { margin: 0; }
+  .pt-muted { color: var(--muted); }
+  .pt-num { font-variant-numeric: tabular-nums; }
+  .pt-eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #A9B0BC; }
+  .pt-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid #2A2E36; background: #14161A; color: var(--fg2); font-size: 12px; width: fit-content; }
+  .pt-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; min-width: 0; }
+  .pt-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid #3A3F48; color: var(--hold); background: #16181C; white-space: nowrap; }
+  .pt-pill.buy { color: var(--buy); border-color: var(--buy-line); background: var(--buy-bg); }
+  .pt-pill.sell { color: var(--sell); border-color: var(--sell-line); background: var(--sell-bg); }
+  .pt-pill.none { color: var(--muted); border-color: #2C3038; background: transparent; }
+  .pt .under { color: var(--buy); } .pt .over { color: var(--sell); } .pt .up { color: var(--buy); } .pt .down { color: var(--sell); }
+  .pt-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; border: 1px solid #3A3F48; background: rgba(17,19,23,.6); color: var(--fg); text-decoration: none; }
+  .pt-btn.light { background: #F2EFE9; border-color: #F2EFE9; color: #111317; }
+  .pt-btn:focus-visible, .pt-tile:focus-visible, .pt-acct:focus-visible, .pt-link:focus-visible { outline: 2px solid var(--buy); outline-offset: 2px; }
+  .pt-select { min-height: 40px; background: #14161A; color: var(--fg); border: 1px solid #2C3038; border-radius: 10px; padding: 0 12px; font: inherit; font-size: 13px; }
+  .pt-link { font: inherit; color: var(--fg); background: none; border: 0; padding: 6px 0; cursor: pointer; text-decoration: underline; text-decoration-color: #4A505B; text-underline-offset: 3px; font-size: 13px; }
+  .pt-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 24px; flex-wrap: wrap; }
+  .pt-head > div { display: flex; flex-direction: column; gap: 10px; max-width: 600px; }
+
+  /* Hero */
+  .pt-hero { position: relative; min-height: 720px; display: flex; flex-direction: column; overflow: hidden; background: #0A0B0D center 60% / cover no-repeat; }
+  .pt-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,11,13,.55) 0%, rgba(10,11,13,.15) 30%, rgba(10,11,13,.25) 60%, #0A0B0D 100%); pointer-events: none; }
+  .pt-hero > * { position: relative; z-index: 1; }
+  /* The photo sits in its own leaf element. Runtime rule: an element with data-draw must not contain another
+     data-draw element, or the inner drawing never runs. */
+  .pt-hero > .pt-photo, .pt-avhero > .pt-photo { position: absolute; inset: 0; z-index: 0; background: center 60% / cover no-repeat; }
+  .pt-avhero > .pt-photo { background-position: center; }
+  .pt-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 18px; padding-bottom: 18px; }
+  .pt-brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+  .pt-navlinks { display: flex; gap: 2px; flex-wrap: wrap; }
+  .pt-navlinks button { font: inherit; font-size: 13px; color: var(--fg2); background: none; border: 0; padding: 10px 12px; min-height: 44px; border-radius: 9px; cursor: pointer; }
+  .pt-navlinks button:hover { background: rgba(255,255,255,.06); color: var(--fg); }
+  .pt-herotext { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; text-align: center; gap: 14px; padding-top: 48px; padding-bottom: 180px; }
+  .pt-total { font-size: clamp(52px, 10vw, 96px); font-weight: 400; line-height: 1; letter-spacing: -0.04em; color: #F7F4EE; text-shadow: 0 2px 30px rgba(0,0,0,.35); }
+  .pt-sub { font-size: 16px; color: #E6E2DA; max-width: 560px; line-height: 1.5; text-shadow: 0 1px 12px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.8); }
+
+  /* Account row */
+  .pt-accts { margin-top: -132px; position: relative; z-index: 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; border-top: 1px solid rgba(255,255,255,.08); }
+  .pt-acct { font: inherit; text-align: left; color: var(--fg); background: none; border: 0; border-right: 1px solid rgba(255,255,255,.08); padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; min-height: 44px; }
+  .pt-acct:last-child { border-right: 0; }
+  .pt-acct[aria-pressed="true"] { background: rgba(156,196,255,.07); }
+  .pt-acct .v { font-size: 22px; }
+  .pt-acct .s { font-size: 12px; color: var(--muted); }
+
+  /* Four cards */
+  .pt-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+  .pt-cards .pt-card { display: flex; flex-direction: column; gap: 8px; }
+  .pt-cards .big { font-size: 30px; }
+
+  /* Tiles */
+  .pt-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); grid-auto-rows: 196px; grid-auto-flow: dense; gap: 14px; }
+  .pt-tile { position: relative; overflow: hidden; border-radius: 16px; border: 1px solid var(--line); background: #15171B center / cover no-repeat; color: var(--fg); text-align: left; font: inherit; padding: 0; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; }
+  .pt-tile.l { grid-column: span 2; grid-row: span 2; }
+  .pt-tile.m { grid-column: span 2; }
+  .pt-tile::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,11,13,.05) 0%, rgba(10,11,13,.35) 40%, rgba(10,11,13,.92) 78%); }
+  .pt-tile.nophoto { background-image: radial-gradient(120% 90% at 80% 0%, #2A2D35 0%, #15171B 60%); }
+  .pt-tile:hover { border-color: #3A3F48; }
+  .pt-tile .body { position: relative; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .pt-tile .tk { font-size: 11px; letter-spacing: .12em; color: #C9CED6; }
+  .pt-tile .nm { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 18px; font-weight: 500; }
+  .pt-tile.l .nm { font-size: 26px; }
+  .pt-tile .wt { font-size: 12px; color: var(--fg2); }
+  .pt-tile .pv { display: flex; gap: 18px; font-size: 13px; }
+  .pt-tile .pv span { display: flex; flex-direction: column; gap: 1px; }
+  .pt-tile .pv small { font-size: 10px; color: var(--muted); letter-spacing: .04em; }
+  .pt-tile .gap { font-size: 13px; font-weight: 500; }
+  .pt-tile:not(.l):not(.m) .pv, .pt-tile:not(.l):not(.m) .band { display: none; }
+  .pt-tile .arrow { position: absolute; top: 12px; right: 12px; z-index: 1; width: 32px; height: 32px; border-radius: 50%; background: rgba(10,11,13,.55); border: 1px solid rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; }
+  .band { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #2B4A73 0%, #2B4A73 21.4%, #2A2D33 21.4%, #2A2D33 50%, #6B4524 50%, #6B4524 100%); margin-top: 4px; }
+  .band .fv { position: absolute; left: 35.7%; top: -3px; bottom: -3px; width: 2px; background: #ECE8E1; }
+  .band .dot { position: absolute; top: -3px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.16); }
+  .pt-funds { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel2); font-size: 13px; }
+  .pt-funds .lbl { font-weight: 500; margin-right: 6px; }
+  .pt-funds button { font: inherit; color: var(--fg2); background: none; border: 0; padding: 6px 2px; min-height: 36px; cursor: pointer; }
+  .pt-funds button span { color: var(--muted); margin-left: 6px; }
+
+  /* Bento */
+  .pt-bento { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .pt-bento .pt-card { display: flex; flex-direction: column; gap: 14px; }
+  .pt-cardhead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-weight: 500; }
+  .pt-bars { display: flex; flex-direction: column; gap: 12px; }
+  .pt-bar { display: grid; grid-template-columns: 96px minmax(0, 1fr) 64px; align-items: center; gap: 10px; font-size: 13px; }
+  .pt-bar .track { height: 10px; border-radius: 5px; background: #181B20; position: relative; overflow: hidden; }
+  .pt-bar .fill { position: absolute; top: 0; bottom: 0; border-radius: 5px; }
+  .pt-bar .val { text-align: right; }
+  .pt-note { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* Meeting */
+  .pt-meet { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; align-items: start; }
+  .pt-moves { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .pt-moves li { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line2); font-size: 15px; line-height: 1.45; }
+  .pt-moves li:last-child { border-bottom: 0; }
+  .pt-moves .n { color: var(--muted); font-size: 20px; }
+
+  /* Details (full tables kept for reference) */
+  .pt details { border: 1px solid var(--line); border-radius: 14px; background: var(--panel2); }
+  .pt details > summary { cursor: pointer; padding: 16px 18px; font-weight: 500; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 44px; }
+  .pt details > summary::-webkit-details-marker { display: none; }
+  .pt details > summary::after { content: "+"; color: var(--muted); font-size: 20px; font-weight: 300; }
+  .pt details[open] > summary::after { content: "−"; }
+  .pt details > .inner { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .pt-wrap { overflow-x: auto; border: 1px solid var(--line2); border-radius: 10px; }
+  .pt table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .pt th, .pt td { padding: 10px 14px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line2); }
+  .pt th { font-size: 11px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: #8E96A3; }
+  .pt th:first-child, .pt td:first-child, .pt th.l, .pt td.l { text-align: left; }
+  .pt tbody tr:last-child td { border-bottom: 0; }
+  .pt tr.grp td { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .pt tr.sub td { font-weight: 500; }
+  .pt-wrap th:first-child, .pt-wrap td:first-child { position: sticky; left: 0; z-index: 1; background: var(--panel2); }
+
+  /* Analysis view */
+  .pt-av { display: flex; flex-direction: column; gap: 28px; }
+  .pt-avhero { position: relative; min-height: 420px; display: flex; flex-direction: column; justify-content: flex-end; background: #15171B center / cover no-repeat; overflow: hidden; }
+  .pt-avhero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,11,13,.25) 0%, rgba(10,11,13,.35) 45%, #0A0B0D 100%); }
+  .pt-avhero > *:not(.pt-photo):not(.pt-avclose) { position: relative; z-index: 2; }
+  .pt-avhero::before { z-index: 1; }
+  .pt-avhero > .pt-avclose { z-index: 3; }
+  .pt-avclose { position: absolute; top: 16px; right: 16px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; background: rgba(10,11,13,.6); border: 1px solid rgba(255,255,255,.18); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .pt-avtitle { display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px; }
+  .pt-avtitle .nm { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: clamp(32px, 6vw, 48px); font-weight: 400; letter-spacing: -0.03em; }
+  .pt-avtitle .nm .pt-pill { font-size: 14px; padding: 4px 14px; }
+  .pt-avgap { font-size: clamp(34px, 7vw, 56px); font-weight: 400; letter-spacing: -0.03em; line-height: 1.05; }
+  .pt-avpv { font-size: 17px; color: var(--fg2); }
+  .pt-bigband { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel2); display: flex; flex-direction: column; gap: 10px; }
+  .pt-bigband .marks { position: relative; height: 38px; font-size: 12px; }
+  .pt-bigband .mark { position: absolute; bottom: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; white-space: nowrap; }
+  .pt-bigband .mark small { color: var(--muted); font-size: 11px; }
+  .pt-bigband .track { position: relative; height: 12px; border-radius: 6px; background: linear-gradient(90deg, #22324A, #2B4A73); }
+  .pt-bigband .seg { position: absolute; top: 0; bottom: 0; }
+  .pt-bigband .tick { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #ECE8E1; opacity: .8; }
+  .pt-bigband .dot { position: absolute; top: -4px; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: var(--buy); box-shadow: 0 0 0 4px rgba(156,196,255,.18); }
+  .pt-bigband .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+  .pt-avsum { font-size: 16px; line-height: 1.6; color: var(--fg2); max-width: 70ch; }
+  .pt-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); border: 1px solid var(--line); border-radius: 14px; background: var(--panel2); overflow: hidden; margin: 0; }
+  .pt-facts div { padding: 16px 18px; border-right: 1px solid var(--line2); border-bottom: 1px solid var(--line2); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .pt-facts dt { font-size: 12px; color: var(--muted); }
+  .pt-facts dd { margin: 0; font-size: 26px; font-variant-numeric: tabular-nums; }
+  .pt-facts dd small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .pt-secs details { border-radius: 0; border-width: 0 0 1px; background: none; }
+  .pt-secs details > summary { padding: 18px 0; font-size: 17px; font-weight: 400; }
+  .pt-secs details > .inner { padding: 0 0 18px; }
+  .pt-doc { max-width: 72ch; line-height: 1.65; font-size: 15px; color: var(--fg2); min-width: 0; overflow-wrap: anywhere; }
+  .pt-doc h1, .pt-doc h2, .pt-doc h3, .pt-doc h4 { font-size: 15px; font-weight: 600; color: var(--fg); margin: 1.4em 0 .4em; letter-spacing: 0; }
+  .pt-doc p, .pt-doc ul, .pt-doc ol, .pt-doc blockquote { margin: 0 0 .9em; }
+  .pt-doc blockquote { border-left: 2px solid var(--line); padding-left: 12px; color: var(--muted); }
+  .pt-doc pre { overflow-x: auto; background: #0A0B0D; padding: 12px; border-radius: 8px; font-size: 12px; }
+  .pt-doc a { color: var(--fg); }
+  .pt-doc .pt-wrap { margin: 0 0 .9em; }
+  .pt-doc table { font-size: 12px; }
+  .pt-doc td.l { white-space: normal; min-width: 140px; }
+  /* Floating Top button: shows once the top of the open view has scrolled away. */
+  /* claude.ai shows this page at full height and scrolls it from outside, so "fixed" would not float.
+     The script places the button just above the bottom of the part of the page that is on screen. */
+  .pt { position: relative; }
+  .pt-totop { position: absolute; right: 16px; top: 0; z-index: 20; min-width: 48px; height: 48px; padding: 0 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: rgba(17,19,23,.88); color: #F2EFE9; font: inherit; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); opacity: 0; transform: translateY(8px); pointer-events: none; visibility: hidden; transition: opacity .2s, transform .2s, visibility 0s linear .2s; }
+  .pt-totop.on { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition-delay: 0s; }
+  .pt-totop:focus-visible { outline: 2px solid var(--buy); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .pt-totop { transition: none; } }
+  @media (max-width: 640px) {
+    .pt { gap: 56px; }
+    .pt-hero { min-height: 620px; }
+    .pt-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 196px; gap: 10px; }
+    .pt-tile .body { gap: 4px; padding: 12px 12px 14px; }
+    .pt-tile .nm { font-size: 15px; }
+    .pt-tile.l .nm { font-size: 22px; }
+    .pt-acct { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .pt-avhero { min-height: 340px; }
+  }
+</style>
+
+<div class="pt">
+  <!-- Overview -->
+  <div id="pt-main">
+    <header class="pt-hero" id="overview">
+      <div class="pt-photo" data-draw="hero-bg" aria-hidden="true"></div>
+      <nav class="pt-in pt-nav" aria-label="Main">
+        <span class="pt-brand">
+          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M2 19 L9 8 L13 14 L16 10 L22 19 Z"></path></svg>
+          <span data-owner-title>My portfolio</span>
+        </span>
+        <span class="pt-navlinks">
+          <button type="button" data-go="companies">Companies</button>
+          <button type="button" data-go="returns">Returns</button>
+          <button type="button" data-go="meeting">Meeting</button>
+          <button type="button" data-go="details">Details</button>
+        </span>
+        <!-- The account menu is built from the accounts in the data, so any number of accounts works. -->
+        <select class="pt-select" id="pt-account" data-draw="account-select" data-source="accounts" aria-label="Account">
+          <option value="">All accounts</option>
+        </select>
+      </nav>
+      <div class="pt-in pt-herotext">
+        <h1 class="pt-sr" tabindex="-1"><span data-owner-title>My portfolio</span> tracker</h1>
+        <span class="pt-eyebrow" data-draw="eyebrow">Portfolio tracker</span>
+        <p class="pt-total pt-num" data-draw="total" data-source="summary" data-row="0" data-field="total">—</p>
+        <p class="pt-sub" data-draw="lede">—</p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center">
+          <button type="button" class="pt-btn light" data-go="companies">See today’s calls
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+          </button>
+          <button type="button" class="pt-btn" data-go="meeting">Monthly meeting</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="pt-in">
+      <div class="pt-accts" data-draw="acct-row" data-source="accounts" role="group" aria-label="Pick an account"></div>
+    </div>
+
+    <div class="pt-in" style="margin-top: 40px">
+      <div class="pt-cards">
+        <div class="pt-card"><span class="pt-eyebrow">Day change</span><span class="big pt-num" data-draw="day" data-source="summary" data-row="0" data-field="day_change">—</span><span class="pt-note" data-draw="day-pct">—</span></div>
+        <div class="pt-card"><span class="pt-eyebrow">Total gain</span><span class="big pt-num" data-draw="gain" data-source="summary" data-row="0" data-field="gain">—</span><span class="pt-note" data-draw="gain-pct">—</span></div>
+        <div class="pt-card"><span class="pt-eyebrow">Largest stock</span><span class="big pt-num" data-draw="top-weight" data-source="summary" data-row="0" data-field="top_weight">—</span><span class="pt-note" data-draw="top-name">—</span></div>
+        <div class="pt-card"><span class="pt-eyebrow">Calls on file</span><span class="big pt-num" data-draw="calls-count">—</span><span data-draw="calls-pills" style="display: flex; gap: 6px; flex-wrap: wrap"></span></div>
+      </div>
+    </div>
+
+    <section class="pt-in" id="companies" style="margin-top: 88px; display: flex; flex-direction: column; gap: 22px">
+      <div class="pt-head">
+        <div><span class="pt-chip">Holdings</span><h2>The companies we own</h2></div>
+        <p class="pt-note" style="max-width: 420px">Bigger holdings get bigger tiles. Each call compares the price with my value: Buy at 20% or more below it, Sell at 20% or more above, Hold in between. Tap a company to open its analysis.</p>
+      </div>
+      <div class="pt-tiles" data-draw="tiles" data-source="companies"></div>
+      <div class="pt-funds" data-draw="funds" data-source="companies"></div>
+    </section>
+
+    <section class="pt-in" id="returns" style="margin-top: 88px; display: flex; flex-direction: column; gap: 22px">
+      <div class="pt-head">
+        <div><span class="pt-chip">Returns</span><h2>Against the S&amp;P 500</h2></div>
+        <p class="pt-note" style="max-width: 420px">How today’s holdings did over the period, with dividends reinvested, next to an S&amp;P 500 index fund. Trades and deposits during the period are not counted.</p>
+      </div>
+      <div class="pt-bento">
+        <div class="pt-card">
+          <div class="pt-cardhead">
+            <span data-draw="ret-title">Your holdings vs the S&amp;P 500</span>
+            <label class="pt-note" style="display: inline-flex; align-items: center; gap: 8px">Period
+              <select class="pt-select" id="pt-period" aria-label="Return period">
+                <option value="1m">1 month</option>
+                <option value="3m">3 months</option>
+                <option value="1y" selected>1 year</option>
+                <option value="3y">3 years</option>
+                <option value="5y">5 years</option>
+                <option value="10y">10 years</option>
+              </select>
+            </label>
+          </div>
+          <div class="pt-bars" data-draw="ret-bars" data-source="performance"></div>
+          <p class="pt-note" data-draw="ret-note">—</p>
+        </div>
+        <div class="pt-card">
+          <div class="pt-cardhead"><span>Concentration</span><span class="pt-note" data-draw="conc-sub">—</span></div>
+          <div class="pt-bars" data-draw="conc-bars" data-source="companies"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pt-in" id="meeting" style="margin-top: 88px">
+      <div class="pt-meet">
+        <div style="display: flex; flex-direction: column; gap: 14px">
+          <span class="pt-chip" data-draw="meet-chip">Monthly meeting</span>
+          <h2>Monthly meeting</h2>
+          <p class="pt-note" style="font-size: 14px">Each month, a short letter on how the accounts stand against your goals and the moves to make, in order, with their tax cost.</p>
+          <label class="pt-note" style="display: inline-flex; align-items: center; gap: 8px">Letter
+            <select class="pt-select" id="pt-meeting" data-draw="meeting-select" data-source="meetings" aria-label="Meeting month"></select>
+          </label>
+        </div>
+        <div class="pt-card" style="display: flex; flex-direction: column; gap: 4px">
+          <ol class="pt-moves" data-draw="moves" data-source="meetings"></ol>
+          <details id="pt-letter-box" style="margin-top: 8px">
+            <summary>Read the full letter</summary>
+            <div class="inner"><article class="pt-doc" data-draw="meeting-doc" data-source="meetings"></article></div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="pt-in" id="details" style="margin-top: 88px; display: flex; flex-direction: column; gap: 12px">
+      <div class="pt-head"><div><span class="pt-chip">Details</span><h2>The full tables</h2></div></div>
+      <details>
+        <summary>All positions</summary>
+        <div class="inner">
+          <p class="pt-note">The same columns as a typical brokerage positions page. With all accounts shown, a stock held in more than one account is one row, and the last column is its share of all accounts.</p>
+          <div class="pt-wrap">
+            <table data-source="table" data-row-key="key" aria-label="Positions">
+              <thead><tr>
+                <th data-field="ticker">Symbol</th><th class="l" data-field="name">Description</th><th class="l pt-acct-col" data-field="account">Accounts</th>
+                <th data-field="shares">Qty</th><th data-field="price">Price</th><th data-field="day_change_pct">Day change %</th><th data-field="day_change">Day change $</th>
+                <th data-field="market_value">Market value</th><th data-field="cost_basis">Cost basis</th><th data-field="gain_pct">Gain/loss %</th><th data-field="gain">Gain/loss $</th>
+                <th class="l" data-field="verdict">Call</th><th data-field="dividend_yield">Div yield</th><th data-field="share">Share</th>
+              </tr></thead>
+              <tbody data-draw="positions-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+      <details>
+        <summary>Returns by account</summary>
+        <div class="inner">
+          <div class="pt-wrap">
+            <table data-source="performance" data-row-key="group_id" aria-label="Returns by account">
+              <thead><tr><th>Account</th><th>Today</th><th>1 month</th><th>3 months</th><th>Year to date</th><th>1 year</th><th>3 years</th><th>5 years</th><th>10 years</th></tr></thead>
+              <tbody data-draw="perf-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+      <details>
+        <summary>Accounts</summary>
+        <div class="inner">
+          <p class="pt-note">Each account’s purpose comes from your holdings file. The last column shows what a 35% fall in stocks and stock funds would cost each account, so you can check it against what that money is for.</p>
+          <div class="pt-wrap">
+            <table data-source="accounts" data-row-key="account_id" aria-label="Accounts">
+              <thead><tr><th>Account</th><th class="l">Purpose</th><th>Value</th><th>Individual stocks</th><th>Funds</th><th>Cash</th><th>Gain over cost</th><th>A 35% stock fall</th></tr></thead>
+              <tbody data-draw="accounts-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+      <details id="pt-private-box" hidden>
+        <summary>Private company equity</summary>
+        <div class="inner">
+          <p class="pt-note">Not counted in the totals. A holding with no value per share on file counts as zero until a 409A valuation or a sale gives one.</p>
+          <div class="pt-wrap">
+            <table data-source="private" data-row-key="holding" aria-label="Private company equity">
+              <thead><tr><th>Holding</th><th class="l">Company</th><th>Shares or options</th><th>Vested</th><th>Strike</th><th>Cost to exercise vested</th><th class="l">Note</th></tr></thead>
+              <tbody data-draw="private-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+      <details>
+        <summary>How the calls work</summary>
+        <div class="inner">
+          <p class="pt-note" style="font-size: 13px"><b>My value</b> is what I think one share is worth today: the average of a bad, a middle, and a good future for the business, weighted by how likely each is. I set it before looking at the market price. Every stock gets the same rule. If the price is 20% or more below my value, the call is Buy. If it is 20% or more above, the call is Sell. In between, the call is Hold. Confidence is shown, but it does not change the rule. “Underpriced” and “overpriced” are the price’s gap to my value, recomputed at every price refresh. Return at today’s price is the yearly return a buyer earns holding from today’s price if my forecast comes true. Funds get a review but no call. Dividend yield is the last 12 months of dividends divided by the latest price. What to do in each account is in the monthly meeting.</p>
+        </div>
+      </details>
+      <p class="pt-note" style="margin-top: 12px">Prices refresh on the schedule you set, and on request. My values change in the monthly review, or early after an earnings report or when a price crosses a buy or sell line. This is analysis for the owner’s own decisions, not licensed financial advice.</p>
+    </section>
+  </div>
+
+  <!-- Analysis view: replaces the overview while a company is open -->
+  <div id="pt-analysis" class="pt-av" hidden>
+    <header class="pt-avhero">
+      <div class="pt-photo" data-draw="av-hero" aria-hidden="true"></div>
+      <button type="button" class="pt-avclose" id="pt-close" aria-label="Close the analysis">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+      <div class="pt-in pt-avtitle" data-draw="av-title" data-source="valuations"></div>
+    </header>
+    <div class="pt-in" style="display: flex; flex-direction: column; gap: 24px">
+      <div data-draw="av-band" data-source="valuations"></div>
+      <p class="pt-avsum" data-draw="av-summary" data-source="analyses">—</p>
+      <dl class="pt-facts" data-draw="av-facts" data-source="valuations"></dl>
+      <div class="pt-secs" data-draw="av-sections" data-source="analyses"></div>
+      <p class="pt-note" data-draw="av-date">—</p>
+      <button type="button" class="pt-btn" id="pt-back" style="align-self: flex-start">Back to all companies</button>
+    </div>
+  </div>
+  <button type="button" class="pt-totop" id="pt-totop" aria-label="Back to top" tabindex="-1" aria-hidden="true">
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>Top
+  </button>
+</div>
+
+<script>
+  // The name shown in the top-left corner and in the page title. Change it to anything you like.
+  const OWNER_TITLE = 'My portfolio';
+
+  // Photo for each company, keyed by ticker, plus the hero and the fallback photo for funds.
+  // The source images are in page/photos/. Upload each one to the artifact's asset store and paste the
+  // /_blob/<id> address the upload returns (CLAUDE.md, "Photos"). An empty address, or a ticker that is
+  // not listed, gets a plain dark tile, so the page works before any photo is uploaded.
+  const PHOTOS = {
+    // 'TICKER': '/_blob/<id>',   one line per company photo you upload (CLAUDE.md, "Photos")
+  };
+  const HERO = '';        // page/photos/HERO.jpg (the bull). Empty shows a dark gradient.
+  const FUND_PHOTO = '';  // page/photos/SKYLINE.jpg, shown on a fund's analysis page.
+
+  document.querySelectorAll('[data-owner-title]').forEach((el) => { el.textContent = OWNER_TITLE; });
+
+  window.pt = {
+    usd: d3.format('$,.0f'),
+    pct: d3.format('.1%'),
+    pct0: d3.format('.0%'),
+    pct2: d3.format('.2%'),
+    money: (v) => (v === null || v === undefined || v === '' ? '—' : d3.format('$,.2f')(+v)),
+    signedUsd: (v) => (v === null || v === undefined ? '—' : (v >= 0 ? '+' : '−') + d3.format('$,.0f')(Math.abs(v))),
+    signedUsd2: (v) => (v === null || v === undefined ? '—' : (v >= 0 ? '+' : '−') + d3.format('$,.2f')(Math.abs(v))),
+    signedPct: (v) => (v === null || v === undefined ? '—' : (v >= 0 ? '+' : '−') + d3.format('.1%')(Math.abs(v))),
+    signedPct2: (v) => (v === null || v === undefined ? '—' : (v >= 0 ? '+' : '−') + d3.format('.2%')(Math.abs(v))),
+    shares: d3.format(',.4~f'),
+    num: (v) => (v === null || v === undefined || v === '' ? null : +v),
+    tone: (v) => (v === null || v === undefined || v === 0 ? '' : v > 0 ? 'up' : 'down'),
+    // Accounts come from the data: each position row carries its account's id, name, and purpose.
+    // Returns [{ id, name, purpose }] in the order the accounts appear in the holdings file.
+    accountList: () => {
+      const p = dash.data('positions');
+      if (p.status !== 'ok') return [];
+      const seen = new Map();
+      p.data.forEach((r) => { if (!seen.has(r.account_id)) seen.set(r.account_id, { id: r.account_id, name: r.account, purpose: r.account_purpose || '' }); });
+      return [...seen.values()];
+    },
+    acctName: (id) => { const a = pt.accountList().find((x) => x.id === id); return a ? a.name : ''; },
+    scope: (id) => {
+      if (id) return 'In ' + (pt.acctName(id) || 'this account');
+      const n = pt.accountList().length;
+      return n === 1 ? 'In one account' : n ? `Across ${n} accounts` : 'Your accounts';
+    },
+    PERIOD: { '1m': '1 month', '3m': '3 months', '1y': '1 year', '3y': '3 years', '5y': '5 years', '10y': '10 years' },
+    GROUPS: [['stock', 'Equities', 'Total equities'], ['fund', 'ETFs and funds', 'Total ETFs and funds'], ['cash-equivalent', 'Cash and money market', 'Total cash and money market']],
+    account: () => dash.params().account || '',
+    period: () => (Object.prototype.hasOwnProperty.call(pt.PERIOD, dash.params().period) ? dash.params().period : '1y'),
+    motion: () => (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'),
+    pillClass: (v) => ({ Buy: 'buy', Hold: '', Sell: 'sell' }[v] ?? 'none'),
+    pill: (v, text) => {
+      const el = document.createElement('span');
+      el.className = 'pt-pill ' + pt.pillClass(v);
+      el.textContent = text || v || 'Not yet analyzed';
+      return el;
+    },
+    // "36% underpriced" / "13% overpriced", from price against my value. Recomputed from the latest price on every load.
+    gapWords: (g) => {
+      if (g === null || g === undefined) return { text: '', cls: '' };
+      if (Math.abs(g) < 0.005) return { text: 'At my value', cls: '' };
+      return g < 0 ? { text: pt.pct0(-g) + ' underpriced', cls: 'under' } : { text: pt.pct0(g) + ' overpriced', cls: 'over' };
+    },
+    // Where the price sits on one shared scale: 50% to 190% of my value. Buy line 80%, my value 100%, sell line 120%.
+    bandPos: (price, fair) => (price && fair ? Math.max(1, Math.min(99, ((price / fair) - 0.5) / 1.4 * 100)) : null),
+    retText: (r) => (r.price_implied_return === null || r.price_implied_return === undefined
+      ? (r.price_implied_return_note ? r.price_implied_return_note.split(' (')[0] : '—')
+      : d3.format('.1%')(r.price_implied_return)),
+    photo: (t) => PHOTOS[t] || '',
+    shortName: (n) => String(n || '').replace(/\s*\([^)]*\)\s*$/, '').replace(/,? (Inc\.?|Corporation|Class [A-C]|PBC Class A|Ltd)$/i, '').replace(/\.com$/, ''),
+    open: (ticker) => {
+      pt.lastTile = ticker;
+      dash.setParams({ ticker });
+      pt.showAnalysis(true);
+      document.getElementById('pt-analysis').scrollIntoView({ block: 'start' });
+      document.getElementById('pt-close').focus({ preventScroll: true });
+    },
+    close: () => {
+      const back = pt.lastTile;
+      dash.setParams({ ticker: null });
+      pt.showAnalysis(false);
+      const tile = back && document.querySelector(`.pt-tile[data-ticker="${CSS.escape(back)}"], .pt-funds [data-ticker="${CSS.escape(back)}"]`);
+      (tile || document.getElementById('companies')).scrollIntoView({ block: 'center' });
+      if (tile) tile.focus({ preventScroll: true });
+    },
+    showAnalysis: (on) => {
+      document.getElementById('pt-main').hidden = on;
+      document.getElementById('pt-analysis').hidden = !on;
+      if (pt.syncTop) pt.syncTop();
+    },
+  };
+
+  dash.calc('view', {
+    title: 'Positions in the chosen account',
+    description: 'All positions, or only those in the account picked at the top of the page.',
+    inputs: ['positions'],
+    fn: (positions) => {
+      const acct = dash.params().account || '';
+      return acct ? positions.filter((r) => r.account_id === acct) : positions;
+    },
+  });
+
+  dash.calc('table', {
+    title: 'Positions table',
+    description: 'With all accounts shown, one row per holding, combined across accounts, with its share of all accounts. With one account picked, that account\'s rows, with each one\'s share of the account.',
+    inputs: ['view'],
+    fn: (view) => {
+      const total = d3.sum(view, (r) => +r.market_value);
+      const one = !!(dash.params().account || '');
+      const groups = one ? view.map((r) => [r]) : d3.groups(view, (r) => r.ticker).map((g) => g[1]);
+      return groups.map((rows) => {
+        const r0 = rows[0];
+        const sum = (f) => d3.sum(rows, (r) => +(r[f] || 0));
+        const mv = sum('market_value'), cost = sum('cost_basis');
+        const anyDay = rows.some((r) => r.day_change !== null && r.day_change !== undefined);
+        return {
+          key: r0.ticker, ticker: r0.ticker, name: r0.name, type: r0.type,
+          account: rows.map((r) => r.account).join(', '),
+          shares: sum('shares'), price: r0.price, price_change: r0.price_change, day_change_pct: r0.day_change_pct,
+          day_change: anyDay ? sum('day_change') : null,
+          market_value: mv, cost_basis: cost, gain: mv - cost, gain_pct: cost ? mv / cost - 1 : null,
+          verdict: r0.verdict, dividend_yield: r0.dividend_yield,
+          share: total ? mv / total : 0,
+          price_stale: rows.some((r) => r.price_stale),
+        };
+      });
+    },
+  });
+
+  dash.calc('summary', {
+    title: 'Summary of what is shown',
+    description: 'Totals for the account picked at the top, or all accounts. Private company equity is left out. Day change % is measured against the last close. Largest stock means the largest individual stock, combined across the accounts shown.',
+    inputs: ['view', 'valuations'],
+    fn: (view, valuations) => {
+      const total = d3.sum(view, (r) => +r.market_value);
+      const cost = d3.sum(view, (r) => +r.cost_basis);
+      const day = d3.sum(view, (r) => +(r.day_change || 0));
+      const prevBase = d3.sum(view.filter((r) => r.previous_close), (r) => +r.shares * +r.previous_close);
+      const stocks = view.filter((r) => r.type === 'stock');
+      const byTicker = d3.rollups(stocks, (v) => d3.sum(v, (r) => +r.market_value), (r) => r.ticker).sort((a, b) => b[1] - a[1]);
+      const names = new Map(view.map((r) => [r.ticker, r.name]));
+      const stockTickers = new Set(stocks.map((r) => r.ticker));
+      const first = byTicker[0] || [null, 0];
+      const calls = { Buy: 0, Hold: 0, Sell: 0 };
+      valuations.forEach((v) => { if (stockTickers.has(v.ticker) && calls[v.verdict] !== undefined) calls[v.verdict] += 1; });
+      return [{
+        total, cost, gain: total - cost, gain_pct: cost ? total / cost - 1 : 0,
+        day_change: day, day_pct: prevBase ? day / prevBase : 0,
+        top_company: names.get(first[0]) || first[0] || 'None', top_weight: total ? first[1] / total : 0,
+        stocks_count: stockTickers.size,
+        buys: calls.Buy, holds: calls.Hold, sells: calls.Sell,
+      }];
+    },
+  });
+
+  dash.calc('companies', {
+    title: 'Value by holding',
+    description: 'Each holding in the accounts shown, combined across accounts, as a share of their total, with its latest call against my value. Cash is left out.',
+    inputs: ['view', 'valuations'],
+    fn: (view, valuations) => {
+      const total = d3.sum(view, (r) => +r.market_value);
+      const val = new Map(valuations.map((v) => [v.ticker, v]));
+      return d3.rollups(view.filter((r) => r.type !== 'cash'), (v) => {
+        const value = d3.sum(v, (r) => +r.market_value);
+        const rec = val.get(v[0].ticker) || {};
+        return {
+          ticker: v[0].ticker, name: v[0].name, type: v[0].type, value,
+          weight: total ? value / total : 0,
+          accounts: v.map((r) => r.account).join(', '),
+          price: rec.price ?? v[0].price, fair_value: rec.fair_value ?? null, verdict: rec.verdict ?? null,
+          price_vs_fair: rec.price_vs_fair ?? null, analyzed: rec.status === 'analyzed' && rec.fair_value !== null && rec.fair_value !== undefined,
+          price_stale: !!rec.price_stale || v.some((r) => r.price_stale),
+        };
+      }, (r) => r.ticker).map((d) => d[1]).sort((a, b) => b.value - a.value);
+    },
+  });
+
+  dash.calc('accounts', {
+    title: 'Value by account',
+    description: 'Each account split into individual stocks, funds, and cash, with what a 35% fall in stocks and stock funds would cost it. Each position counts at its stock_exposure (1 for a stock or a stock fund by default, 0 for cash; set it lower for a bond fund or a balanced fund in holdings.json).',
+    inputs: ['positions'],
+    fn: (positions) => d3.rollups(positions, (v) => {
+      const value = d3.sum(v, (r) => +r.market_value);
+      const part = (f) => d3.sum(v.filter(f), (r) => +r.market_value);
+      const stocks = part((r) => r.type === 'stock');
+      const cash = part((r) => r.type === 'cash' || r.type === 'cash-equivalent');
+      const funds = value - stocks - cash;
+      const exposed = d3.sum(v, (r) => +r.market_value * (r.stock_exposure === null || r.stock_exposure === undefined
+        ? (r.type === 'stock' || r.type === 'fund' ? 1 : 0) : +r.stock_exposure));
+      return {
+        account: v[0].account, account_id: v[0].account_id, tax_type: v[0].tax_type,
+        purpose: v[0].account_purpose || '',
+        value, stock_share: value ? stocks / value : 0, fund_share: value ? funds / value : 0, cash_share: value ? cash / value : 0,
+        gain: value - d3.sum(v, (r) => +r.cost_basis),
+        drop_35: -0.35 * exposed,
+      };
+    }, (r) => r.account_id).map((d) => d[1]),
+  });
+
+  // Controls: they only listen and set values.
+  document.querySelectorAll('#pt-account').forEach((sel) => sel.addEventListener('change', () => dash.setParams({ account: sel.value || null })));
+  document.querySelectorAll('#pt-period').forEach((sel) => sel.addEventListener('change', () => dash.setParams({ period: sel.value })));
+  document.querySelectorAll('#pt-close, #pt-back').forEach((b) => b.addEventListener('click', () => pt.close()));
+  document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => {
+    const el = document.getElementById(b.dataset.go);
+    if (el) el.scrollIntoView({ behavior: pt.motion(), block: 'start' });
+  }));
+
+  // Floating Top button. claude.ai shows the page at full height and scrolls it from outside, so the
+  // button is placed by script: invisible 200px strips run down the page, and the lowest strip on screen
+  // tells us where the visible bottom is (each strip reports every 5% change in how much of it shows).
+  // It appears once the top of the open view (overview hero or analysis header) is out of sight.
+  (function () {
+    const btn = document.getElementById('pt-totop');
+    const root = btn && btn.parentElement;
+    if (!btn || !root || !('IntersectionObserver' in window)) return;
+    const tops = [document.getElementById('overview'), document.querySelector('.pt-avhero')].filter(Boolean);
+    const openTop = () => tops.find((el) => el.offsetParent !== null);
+    const seen = new Map();
+    const update = () => {
+      const open = openTop();
+      const show = open ? seen.get(open) === false : false;
+      btn.classList.toggle('on', show);
+      btn.tabIndex = show ? 0 : -1;
+      btn.setAttribute('aria-hidden', String(!show));
+    };
+    const topIo = new IntersectionObserver((entries) => { entries.forEach((e) => seen.set(e.target, e.isIntersecting)); update(); }, { threshold: 0 });
+    tops.forEach((el) => topIo.observe(el));
+
+    const STRIP = 200;
+    const strips = document.createElement('div');
+    strips.setAttribute('aria-hidden', 'true');
+    strips.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:100%;pointer-events:none;visibility:hidden';
+    root.appendChild(strips);
+    const vis = new Map();
+    const place = () => {
+      let bottom = -1;
+      vis.forEach((b) => { if (b > bottom) bottom = b; });
+      if (bottom >= 0) btn.style.top = Math.max(0, bottom - 72 - (btn.offsetHeight || 48)) + 'px';
+    };
+    const steps = Array.from({ length: 21 }, (_, i) => i / 20);
+    const stripIo = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        const i = +e.target.dataset.i;
+        if (e.isIntersecting) vis.set(i, i * STRIP + (e.intersectionRect.bottom - e.boundingClientRect.top));
+        else vis.delete(i);
+      });
+      place();
+    }, { threshold: steps });
+    let built = 0;
+    const build = () => {
+      const n = Math.ceil(root.scrollHeight / STRIP);
+      if (n === built) return;
+      stripIo.disconnect(); vis.clear(); strips.replaceChildren();
+      for (let i = 0; i < n; i++) {
+        const d = document.createElement('div');
+        d.dataset.i = i;
+        d.style.cssText = `position:absolute;left:0;width:1px;top:${i * STRIP}px;height:${STRIP}px`;
+        strips.appendChild(d); stripIo.observe(d);
+      }
+      built = n;
+    };
+    build();
+    if ('ResizeObserver' in window) { let t; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(build, 150); }).observe(root); }
+
+    // After a view switch the old "seen" values are stale; hide the button until the observer reports.
+    pt.syncTop = () => { seen.clear(); topIo.disconnect(); tops.forEach((el) => topIo.observe(el)); update(); };
+    btn.addEventListener('click', () => {
+      const open = openTop() || tops[0];
+      open.scrollIntoView({ behavior: pt.motion(), block: 'start' });
+      const focusEl = open.querySelector('#pt-close') || document.querySelector('#overview .pt-sr');
+      if (focusEl) focusEl.focus({ preventScroll: true });
+    });
+  })();
+
+  function syncControls() {
+    const acct = pt.account();
+    document.querySelectorAll('#pt-account').forEach((sel) => { if (document.activeElement !== sel) sel.value = acct; });
+    document.querySelectorAll('#pt-period').forEach((sel) => { if (document.activeElement !== sel) sel.value = pt.period(); });
+    document.querySelectorAll('.pt-acct-col').forEach((th) => { th.hidden = !!acct; });
+    pt.showAnalysis(!!dash.params().ticker);
+  }
+  dash.onData(syncControls);
+
+  dash.draw('hero-bg', (el) => { syncControls(); el.style.backgroundImage = HERO ? `url("${HERO}")` : 'radial-gradient(120% 80% at 60% 70%, #3A2A1E 0%, #14161B 55%, #0A0B0D 100%)'; });
+
+  // One-value drawings from the summary calc.
+  const one = (name, field, fmt, tone) => dash.draw(name, (el) => {
+    const s = dash.data('summary');
+    if (s.status === 'loading') return;
+    el.classList.remove('up', 'down');
+    const row = s.status === 'ok' && s.data && s.data[0];
+    const v = row ? row[field] : null;
+    el.textContent = v !== null && v !== undefined ? fmt(v) : '—';
+    if (tone && pt.tone(v)) el.classList.add(pt.tone(v));
+  });
+  one('total', 'total', pt.usd);
+  one('day', 'day_change', pt.signedUsd, true);
+  one('day-pct', 'day_pct', (v) => pt.signedPct2(v) + ' since the last close');
+  one('gain', 'gain', pt.signedUsd, true);
+  one('top-weight', 'top_weight', pt.pct);
+  one('top-name', 'top_company', (v) => v);
+  dash.draw('gain-pct', (el) => {
+    const s = dash.data('summary'); const r = s.status === 'ok' && s.data[0];
+    el.textContent = r ? `${pt.signedPct(r.gain_pct)} on ${pt.usd(r.cost)} paid` : '—';
+  });
+  dash.draw('calls-count', (el) => {
+    const s = dash.data('summary'); const r = s.status === 'ok' && s.data[0];
+    el.textContent = r ? `${r.buys + r.holds + r.sells} stocks` : '—';
+  });
+  dash.draw('calls-pills', (el) => {
+    const s = dash.data('summary'); const r = s.status === 'ok' && s.data[0];
+    el.replaceChildren();
+    if (!r) return;
+    el.append(pt.pill('Buy', `${r.buys} Buy`), pt.pill('Hold', `${r.holds} Hold`), pt.pill('Sell', `${r.sells} Sell`));
+  });
+  dash.draw('eyebrow', (el) => {
+    const p = dash.data('positions');
+    el.textContent = 'Portfolio tracker · ' + d3.timeFormat('%A, %b %-d')(new Date());
+  });
+  dash.draw('lede', (el) => {
+    const p = dash.data('performance');
+    const id = pt.account() || 'all';
+    const me = p.status === 'ok' ? p.data.find((r) => r.group_id === id) : null;
+    const spy = p.status === 'ok' ? p.data.find((r) => r.group_id === 'spy') : null;
+    const scope = pt.scope(pt.account());
+    el.textContent = me && spy && me['1y'] !== null && spy['1y'] !== null
+      ? `${scope}. Over the past year these holdings returned ${pt.signedPct(me['1y'])}, against ${pt.signedPct(spy['1y'])} for the S&P 500.`
+      : scope + '.';
+  });
+
+  // Account menu, built from the accounts dataset (a select may hold a drawing; it holds no other drawing).
+  dash.draw('account-select', (sel) => {
+    const a = dash.data('accounts');
+    const rows = a.status === 'ok' ? [...a.data].sort((x, y) => y.value - x.value) : [];
+    sel.replaceChildren(new Option('All accounts', ''), ...rows.map((r) => new Option(r.account, r.account_id)));
+    sel.value = pt.account();
+  });
+
+  dash.draw('acct-row', (el) => {
+    const a = dash.data('accounts');
+    const p = dash.data('private');
+    el.replaceChildren();
+    if (a.status !== 'ok') { el.textContent = a.status === 'error' ? 'Accounts did not load.' : ''; return; }
+    const acct = pt.account();
+    const rows = [...a.data].sort((x, y) => y.value - x.value);
+    for (const r of rows) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'pt-acct';
+      b.setAttribute('aria-pressed', String(acct === r.account_id));
+      b.innerHTML = '<span class="pt-eyebrow"></span><span class="v pt-num"></span><span class="s"></span>';
+      b.children[0].textContent = r.account;
+      b.children[1].textContent = pt.usd(r.value);
+      b.children[2].textContent = acct === r.account_id ? 'Showing this account · tap again for all' : r.purpose;
+      b.addEventListener('click', () => dash.setParams({ account: acct === r.account_id ? null : r.account_id }));
+      el.appendChild(b);
+    }
+    // Private holdings get a card only when there are some.
+    if (p.status !== 'ok' || !p.data.length) return;
+    const priv = document.createElement('div');
+    priv.className = 'pt-acct'; priv.style.cursor = 'default';
+    priv.innerHTML = '<span class="pt-eyebrow">Private equity</span><span class="v pt-num"></span><span class="s"></span>';
+    const pv = p.status === 'ok' ? d3.sum(p.data, (r) => (r.value_per_share ? r.vested * r.value_per_share : 0)) : 0;
+    priv.children[1].textContent = pv ? pt.usd(pv) : 'No value on file';
+    priv.children[2].textContent = p.data.map((r) => r.company).filter((v, i, s) => s.indexOf(v) === i).join(' · ') + ' · not in the totals';
+    el.appendChild(priv);
+  });
+
+  // Company tiles. Size follows the holding's share of what is shown; the price line and band recompute from the latest price.
+  dash.draw('tiles', (el) => {
+    const c = dash.data('companies');
+    el.replaceChildren();
+    if (c.status !== 'ok') { el.textContent = c.status === 'error' ? 'Holdings did not load.' : ''; return; }
+    const stocks = c.data.filter((d) => d.type === 'stock');
+    for (const d of stocks) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pt-tile ' + (d.weight >= 0.10 ? 'l' : d.weight >= 0.04 ? 'm' : '');
+      b.dataset.ticker = d.ticker;
+      const img = pt.photo(d.ticker);
+      if (img) b.style.backgroundImage = `url("${img}")`; else b.classList.add('nophoto');
+      const gw = pt.gapWords(d.price_vs_fair);
+      b.setAttribute('aria-label', `${d.name}, ${d.verdict || 'not yet analyzed'}${gw.text ? ', ' + gw.text : ''}, ${pt.pct(d.weight)} of the portfolio. Open the analysis.`);
+      b.innerHTML = `<span class="arrow" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"></path></svg></span>
+        <span class="body"><span class="tk"></span><span class="nm"><span class="n"></span></span><span class="wt"></span>
+        <span class="pv"><span><small>PRICE</small><b class="pt-num p"></b></span><span><small>MY VALUE</small><b class="pt-num f"></b></span></span>
+        <span class="gap"></span><span class="band" aria-hidden="true"><span class="fv"></span><span class="dot"></span></span></span>`;
+      b.querySelector('.tk').textContent = d.ticker;
+      b.querySelector('.n').textContent = pt.shortName(d.name);
+      b.querySelector('.nm').appendChild(pt.pill(d.verdict));
+      b.querySelector('.wt').textContent = `${pt.pct(d.weight)} of portfolio`;
+      b.querySelector('.p').textContent = pt.money(d.price) + (d.price_stale ? ' (stale)' : '');
+      b.querySelector('.f').textContent = d.analyzed ? pt.money(d.fair_value) : '—';
+      const gap = b.querySelector('.gap');
+      gap.textContent = d.analyzed ? gw.text : 'Valued in the next monthly review';
+      if (!d.analyzed) gap.classList.add('pt-muted');
+      if (gw.cls) gap.classList.add(gw.cls);
+      const pos = d.analyzed ? pt.bandPos(d.price, d.fair_value) : null;
+      if (pos === null) b.querySelector('.band').remove(); else b.querySelector('.dot').style.left = pos + '%';
+      b.addEventListener('click', () => pt.open(d.ticker));
+      el.appendChild(b);
+    }
+  });
+
+  dash.draw('funds', (el) => {
+    const c = dash.data('companies');
+    el.replaceChildren();
+    if (c.status !== 'ok') return;
+    const funds = c.data.filter((d) => d.type !== 'stock');
+    if (!funds.length) { el.hidden = true; return; }
+    el.hidden = false;
+    const lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = 'Funds';
+    el.appendChild(lbl);
+    for (const d of funds) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.dataset.ticker = d.ticker;
+      b.textContent = d.ticker;
+      const s = document.createElement('span'); s.textContent = pt.pct(d.weight); b.appendChild(s);
+      b.title = `${d.name}: ${pt.usd(d.value)}`;
+      b.setAttribute('aria-label', `${d.name}, ${pt.pct(d.weight)} of the portfolio. Open its review.`);
+      b.addEventListener('click', () => pt.open(d.ticker));
+      el.appendChild(b);
+    }
+    const tot = document.createElement('span'); tot.className = 'pt-muted'; tot.style.marginLeft = 'auto';
+    tot.textContent = `${pt.pct(d3.sum(funds, (d) => d.weight))} together`;
+    el.appendChild(tot);
+  });
+
+  // Returns card: the period menu picks which column of the performance file to show.
+  dash.draw('ret-title', (el) => { const n = pt.acctName(pt.account()); el.textContent = (n ? n + ' vs' : 'Your holdings vs') + ' the S&P 500'; });
+  dash.draw('ret-bars', (el) => {
+    const p = dash.data('performance');
+    el.replaceChildren();
+    if (p.status !== 'ok') { el.textContent = p.status === 'error' ? 'Returns did not load.' : '—'; return; }
+    const per = pt.period();
+    const acct = pt.account();
+    const acctIds = p.data.map((r) => r.group_id).filter((id) => id !== 'all' && id !== 'spy');
+    const ids = acct ? [acct, 'spy'] : ['all', ...acctIds, 'spy'];
+    const rows = ids.map((id) => p.data.find((r) => r.group_id === id)).filter(Boolean);
+    const vals = rows.map((r) => r[per]).filter((v) => v !== null && v !== undefined);
+    const lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
+    const x = d3.scaleLinear().domain([lo, hi === lo ? lo + 1 : hi]).range([0, 100]);
+    const spy = rows.find((r) => r.group_id === 'spy') || {};
+    for (const r of rows) {
+      const v = r[per];
+      const row = document.createElement('div'); row.className = 'pt-bar';
+      const name = document.createElement('span'); name.textContent = r.group_id === 'all' ? 'All accounts' : r.group_id === 'spy' ? 'S&P 500' : r.group;
+      if (r.group_id === (acct || 'all')) name.style.fontWeight = '600';
+      const track = document.createElement('span'); track.className = 'track';
+      const fill = document.createElement('span'); fill.className = 'fill';
+      const val = document.createElement('span'); val.className = 'val pt-num';
+      if (v === null || v === undefined) { val.textContent = '—'; val.classList.add('pt-muted'); }
+      else {
+        const a = x(Math.min(0, v)), b = x(Math.max(0, v));
+        fill.style.left = a + '%'; fill.style.width = Math.max(1, b - a) + '%';
+        fill.style.background = r.group_id === 'spy' ? '#4A505B' : (spy[per] !== null && spy[per] !== undefined && v >= spy[per] ? 'var(--buy)' : 'var(--sell)');
+        val.textContent = pt.signedPct(v);
+        const cov = r[per + '_coverage'];
+        if (cov !== null && cov !== undefined && cov < 0.995) val.title = `${pt.pct(1 - cov)} of the value has no history this far back and is left out`;
+      }
+      track.appendChild(fill);
+      row.append(name, track, val);
+      el.appendChild(row);
+    }
+  });
+  dash.draw('ret-note', (el) => {
+    const p = dash.data('performance');
+    if (p.status !== 'ok') { el.textContent = ''; return; }
+    const per = pt.period();
+    const me = p.data.find((r) => r.group_id === (pt.account() || 'all'));
+    const cov = me ? me[per + '_coverage'] : null;
+    const base = `Total return over ${pt.PERIOD[per]}. Blue beats the S&P 500; orange trails it.`;
+    el.textContent = cov !== null && cov !== undefined && cov < 0.995 ? `${base} ${pt.pct0(1 - cov)} of the value is newer than ${pt.PERIOD[per]} and is left out.` : base;
+  });
+
+  dash.draw('conc-sub', (el) => {
+    const c = dash.data('companies');
+    el.textContent = c.status === 'ok' && c.data[0] ? `Largest: ${c.data[0].ticker} at ${pt.pct(c.data[0].weight)}` : '—';
+  });
+  dash.draw('conc-bars', (el) => {
+    const c = dash.data('companies');
+    el.replaceChildren();
+    if (c.status !== 'ok') return;
+    const top = c.data.slice(0, 8);
+    const max = d3.max(top, (d) => d.weight) || 1;
+    for (const d of top) {
+      const row = document.createElement('div'); row.className = 'pt-bar'; row.style.gridTemplateColumns = '64px minmax(0, 1fr) 52px';
+      const name = document.createElement('span'); name.textContent = d.ticker;
+      const track = document.createElement('span'); track.className = 'track';
+      const fill = document.createElement('span'); fill.className = 'fill';
+      fill.style.left = '0'; fill.style.width = (d.weight / max * 100) + '%';
+      fill.style.background = d.type === 'stock' ? 'linear-gradient(90deg, #B9774F, #F4B37A)' : '#4A505B';
+      track.appendChild(fill);
+      const val = document.createElement('span'); val.className = 'val pt-num'; val.textContent = pt.pct(d.weight);
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'pt-link'; btn.style.padding = '0'; btn.textContent = d.ticker;
+      btn.setAttribute('aria-label', `Open the analysis for ${d.name}`);
+      btn.addEventListener('click', () => pt.open(d.ticker));
+      name.replaceChildren(btn);
+      row.append(name, track, val);
+      el.appendChild(row);
+    }
+  });
+
+  // Monthly meeting: the numbered moves come straight from the letter's bold "**1. ...**" lines.
+  dash.draw('meeting-select', (sel) => {
+    const m = dash.data('meetings');
+    const rows = m.status === 'ok' ? m.data : [];
+    sel.replaceChildren(...rows.map((r) => new Option(r.title, r.date)));
+    sel.value = dash.params().meeting || (rows[0] && rows[0].date) || '';
+    sel.onchange = () => dash.setParams({ meeting: sel.value || null });
+  });
+  const pickLetter = (m) => (m.status === 'ok' && m.data.length ? (m.data.find((r) => r.date === dash.params().meeting) || m.data[0]) : null);
+  dash.draw('meet-chip', (el) => { const d = pickLetter(dash.data('meetings')); el.textContent = d ? d.title : 'Monthly meeting'; });
+  dash.draw('moves', (el) => {
+    const doc = pickLetter(dash.data('meetings'));
+    el.replaceChildren();
+    if (!doc) { const li = document.createElement('li'); li.textContent = 'No letter yet.'; el.appendChild(li); return; }
+    const moves = [...doc.text.matchAll(/^\*\*(\d+)\.\s+(.+?)\*\*/gm)].map((m) => [m[1], m[2]]);
+    for (const [n, text] of moves) {
+      const li = document.createElement('li');
+      const a = document.createElement('span'); a.className = 'n pt-num'; a.textContent = String(n).padStart(2, '0');
+      const b = document.createElement('span'); b.textContent = text.replace(/\.$/, '');
+      li.append(a, b); el.appendChild(li);
+    }
+    if (!moves.length) { const li = document.createElement('li'); li.textContent = 'Open the letter below.'; el.appendChild(li); }
+  });
+  dash.draw('meeting-doc', (el) => {
+    const doc = pickLetter(dash.data('meetings'));
+    el.replaceChildren();
+    if (!doc) return;
+    el.setAttribute('data-where', 'date=' + encodeURIComponent(doc.date));
+    el.setAttribute('data-field', 'text');
+    renderMarkdown(el, doc.text);
+  });
+
+  // Detail tables.
+  function cell(tr, text, cls) {
+    const td = document.createElement('td');
+    if (cls) td.className = cls;
+    td.textContent = text;
+    tr.appendChild(td);
+    return td;
+  }
+  function statusRow(tbody, cols, s, what) {
+    tbody.replaceChildren();
+    const tr = document.createElement('tr');
+    const td = cell(tr, s.status === 'error' ? `${what} did not load.` : '—', 'l pt-muted');
+    td.colSpan = cols;
+    tbody.appendChild(tr);
+  }
+  dash.draw('positions-body', (tbody) => {
+    const p = dash.data('table');
+    if (p.status !== 'ok') return statusRow(tbody, 14, p, 'Positions');
+    const showAcct = !pt.account();
+    const total = d3.sum(p.data, (r) => +r.market_value);
+    const groupOf = (r) => (r.type === 'cash' ? 'cash-equivalent' : r.type);
+    tbody.replaceChildren();
+    for (const [type, label, totalLabel] of pt.GROUPS) {
+      const rows = p.data.filter((r) => groupOf(r) === type).sort((a, b) => d3.descending(a.market_value, b.market_value));
+      if (!rows.length) continue;
+      const head = document.createElement('tr'); head.className = 'grp';
+      const h = cell(head, label); h.colSpan = 14; tbody.appendChild(head);
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+        tr.dataset.key = encodeURIComponent(r.key);
+        const isCash = r.type === 'cash';
+        const t = cell(tr, '');
+        if (r.type === 'stock' || r.type === 'fund') {
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'pt-link'; b.textContent = r.ticker;
+          b.setAttribute('aria-label', `Open the analysis for ${r.ticker}`);
+          b.addEventListener('click', () => pt.open(r.ticker)); t.appendChild(b);
+        } else t.textContent = r.ticker;
+        cell(tr, r.name, 'l');
+        const a = cell(tr, r.account, 'l'); a.hidden = !showAcct;
+        cell(tr, isCash ? '' : pt.shares(r.shares));
+        const pc = cell(tr, isCash ? '' : pt.money(r.price));
+        if (r.price_stale) { pc.textContent += ' (stale)'; pc.title = 'Price did not refresh; showing the last known price'; }
+        cell(tr, isCash ? '' : pt.signedPct2(r.day_change_pct), pt.tone(r.day_change_pct));
+        cell(tr, isCash ? '' : pt.signedUsd2(r.day_change), pt.tone(r.day_change));
+        cell(tr, pt.money(r.market_value));
+        cell(tr, pt.money(r.cost_basis));
+        cell(tr, isCash ? '' : pt.signedPct2(r.gain_pct), pt.tone(r.gain_pct));
+        cell(tr, isCash ? '' : pt.signedUsd2(r.gain), pt.tone(r.gain));
+        const z = cell(tr, '', 'l');
+        if (r.verdict) z.appendChild(pt.pill(r.verdict));
+        else { z.textContent = r.type === 'stock' ? 'Not yet analyzed' : ''; z.classList.add('pt-muted'); }
+        cell(tr, r.dividend_yield ? pt.pct2(r.dividend_yield) : '—');
+        cell(tr, pt.pct2(r.share));
+        tbody.appendChild(tr);
+      }
+      const sum = (f) => d3.sum(rows, (r) => +(r[f] || 0));
+      const mv = sum('market_value'), cb = sum('cost_basis'), dc = sum('day_change');
+      const sub = document.createElement('tr'); sub.className = 'sub';
+      cell(sub, totalLabel); cell(sub, '', 'l');
+      const sa = cell(sub, '', 'l'); sa.hidden = !showAcct;
+      cell(sub, ''); cell(sub, '');
+      cell(sub, mv - dc ? pt.signedPct2(dc / (mv - dc)) : '—', pt.tone(dc));
+      cell(sub, pt.signedUsd2(dc), pt.tone(dc));
+      cell(sub, pt.money(mv)); cell(sub, pt.money(cb));
+      cell(sub, cb ? pt.signedPct2(mv / cb - 1) : '—', pt.tone(mv - cb));
+      cell(sub, pt.signedUsd2(mv - cb), pt.tone(mv - cb));
+      cell(sub, '', 'l'); cell(sub, '');
+      cell(sub, total ? pt.pct2(mv / total) : '—');
+      tbody.appendChild(sub);
+    }
+  });
+  dash.draw('perf-body', (tbody) => {
+    const p = dash.data('performance');
+    if (p.status !== 'ok') return statusRow(tbody, 9, p, 'Returns');
+    const spy = p.data.find((r) => r.group_id === 'spy') || {};
+    tbody.replaceChildren();
+    const acctIds = p.data.map((r) => r.group_id).filter((id) => id !== 'all' && id !== 'spy');
+    for (const id of [...acctIds, 'all', 'spy']) {
+      const r = p.data.find((x) => x.group_id === id);
+      if (!r) continue;
+      const tr = document.createElement('tr'); tr.dataset.key = encodeURIComponent(id);
+      cell(tr, r.group);
+      for (const per of ['day', '1m', '3m', 'ytd', '1y', '3y', '5y', '10y']) {
+        const v = r[per];
+        const td = cell(tr, v === null || v === undefined ? '—' : pt.signedPct2(v));
+        if (id !== 'spy' && v !== null && v !== undefined && spy[per] !== null && spy[per] !== undefined) td.className = v >= spy[per] ? 'up' : 'down';
+        const cov = r[per + '_coverage'];
+        if (per !== 'day' && cov !== null && cov !== undefined && cov < 0.995) td.title = `${pt.pct(1 - cov)} of the value has no history this far back and is left out`;
+      }
+      tbody.appendChild(tr);
+    }
+  });
+  dash.draw('accounts-body', (tbody) => {
+    const a = dash.data('accounts');
+    if (a.status !== 'ok') return statusRow(tbody, 8, a, 'Accounts');
+    tbody.replaceChildren();
+    for (const r of a.data) {
+      const tr = document.createElement('tr'); tr.dataset.key = encodeURIComponent(r.account_id);
+      cell(tr, r.account); cell(tr, r.purpose, 'l'); cell(tr, pt.usd(r.value));
+      cell(tr, pt.pct(r.stock_share)); cell(tr, pt.pct(r.fund_share)); cell(tr, pt.pct(r.cash_share));
+      cell(tr, pt.signedUsd(r.gain), pt.tone(r.gain)); cell(tr, pt.signedUsd(r.drop_35), 'down');
+      tbody.appendChild(tr);
+    }
+  });
+  dash.draw('private-body', (tbody) => {
+    const p = dash.data('private');
+    // The private table shows only when the private dataset has rows. The details box is not a drawing,
+    // so hiding it from here does not nest one drawing inside another.
+    const box = document.getElementById('pt-private-box');
+    if (box) box.hidden = !(p.status === 'ok' && p.data.length);
+    if (p.status !== 'ok') return statusRow(tbody, 7, p, 'Private holdings');
+    tbody.replaceChildren();
+    for (const r of p.data) {
+      const tr = document.createElement('tr'); tr.dataset.key = encodeURIComponent(r.holding);
+      cell(tr, r.holding); cell(tr, r.company, 'l'); cell(tr, d3.format(',')(r.units)); cell(tr, d3.format(',')(r.vested));
+      cell(tr, r.strike === null || r.strike === undefined ? '—' : pt.money(r.strike));
+      cell(tr, r.cost_to_exercise_vested !== null && r.cost_to_exercise_vested !== undefined ? pt.usd(r.cost_to_exercise_vested) : '—');
+      cell(tr, r.note, 'l pt-muted').style.whiteSpace = 'normal';
+      tbody.appendChild(tr);
+    }
+  });
+
+  // ---- Analysis view. It draws only while a company is open, so the analyses file loads on first open. ----
+  const openRec = () => {
+    const t = dash.params().ticker;
+    const v = dash.data('valuations');
+    return { t, rec: v.status === 'ok' ? v.data.find((r) => r.ticker === t) : null };
+  };
+  const openName = (t) => {
+    const p = dash.data('positions');
+    const row = p.status === 'ok' ? p.data.find((r) => r.ticker === t) : null;
+    return row ? pt.shortName(row.name) : t;
+  };
+  dash.draw('av-hero', (el) => {
+    const t = dash.params().ticker;
+    const p = dash.data('positions');
+    const row = t && p.status === 'ok' ? p.data.find((r) => r.ticker === t) : null;
+    const img = t ? (pt.photo(t) || (row && row.type !== 'stock' ? FUND_PHOTO : '')) : '';
+    el.style.backgroundImage = img ? `url("${img}")` : 'radial-gradient(120% 90% at 70% 10%, #2A2D35 0%, #15171B 60%, #0A0B0D 100%)';
+  });
+  dash.draw('av-title', (el) => {
+    const { t, rec } = openRec();
+    el.replaceChildren();
+    if (!t) return;
+    const tk = document.createElement('span'); tk.className = 'pt-eyebrow'; tk.textContent = t.split('').join(' ');
+    const nm = document.createElement('h1'); nm.className = 'nm'; nm.textContent = openName(t);
+    el.append(tk, nm);
+    if (!rec || rec.status !== 'analyzed' || rec.fair_value === null || rec.fair_value === undefined) {
+      // Funds get a review but no value or call; stocks not yet valued say so.
+      nm.appendChild(pt.pill(null, rec && rec.status === 'analyzed' ? 'Fund' : 'Not yet analyzed'));
+      const pv = document.createElement('p'); pv.className = 'pt-avpv';
+      pv.textContent = rec ? `Price ${pt.money(rec.price)}` : '';
+      el.appendChild(pv);
+      return;
+    }
+    nm.appendChild(pt.pill(rec.verdict));
+    if (rec.needs_review || rec.bands_stale) {
+      const f = document.createElement('span'); f.className = 'pt-pill sell';
+      f.textContent = rec.bands_stale ? 'Value out of date' : 'Review early';
+      f.title = rec.bands_stale ? 'My value is past its review date' : 'An earnings report came out or the price crossed a line since the last review';
+      nm.appendChild(f);
+    }
+    const gw = pt.gapWords(rec.price_vs_fair);
+    const gap = document.createElement('p'); gap.className = 'pt-avgap ' + gw.cls; gap.textContent = gw.text;
+    gap.setAttribute('data-source', 'valuations'); gap.setAttribute('data-where', 'ticker=' + encodeURIComponent(t)); gap.setAttribute('data-field', 'price_vs_fair');
+    const pv = document.createElement('p'); pv.className = 'pt-avpv pt-num';
+    pv.textContent = `Price ${pt.money(rec.price)}${rec.price_stale ? ' (stale)' : ''} · My value ${pt.money(rec.fair_value)}`;
+    el.append(gap, pv);
+  });
+  dash.draw('av-band', (el) => {
+    const { t, rec } = openRec();
+    el.replaceChildren();
+    if (!t || !rec || rec.status !== 'analyzed') return;
+    const price = pt.num(rec.price), buy = pt.num(rec.buy_below_price), sell = pt.num(rec.sell_above_price), fair = pt.num(rec.fair_value);
+    if ([price, buy, sell, fair].some((x) => x === null)) return;
+    const lo = Math.min(buy, price) * 0.85, hi = Math.max(sell, price) * 1.1;
+    const x = (v) => Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100));
+    const box = document.createElement('div'); box.className = 'pt-bigband';
+    box.setAttribute('role', 'img');
+    box.setAttribute('aria-label', `Price ${pt.money(price)} against buy below ${pt.money(buy)}, my value ${pt.money(fair)}, and sell above ${pt.money(sell)}`);
+    const marks = document.createElement('div'); marks.className = 'marks';
+    const mark = (v, label, color) => {
+      const m = document.createElement('span'); m.className = 'mark'; m.style.left = x(v) + '%';
+      m.innerHTML = '<small></small><b class="pt-num"></b>';
+      m.children[0].textContent = label; m.children[1].textContent = pt.money(v);
+      if (color) m.children[0].style.color = color;
+      marks.appendChild(m);
+    };
+    mark(buy, 'Buy below', 'var(--buy)'); mark(fair, 'My value'); mark(sell, 'Sell above', 'var(--sell)');
+    const track = document.createElement('div'); track.className = 'track';
+    track.style.background = `linear-gradient(90deg, #22324A 0%, #2B4A73 ${x(buy)}%, #2A2D33 ${x(buy)}%, #2A2D33 ${x(sell)}%, #6B4524 ${x(sell)}%, #8A5A30 100%)`;
+    const tick = document.createElement('span'); tick.className = 'tick'; tick.style.left = x(fair) + '%';
+    const dot = document.createElement('span'); dot.className = 'dot'; dot.style.left = x(price) + '%';
+    dot.style.background = rec.verdict === 'Sell' ? 'var(--sell)' : rec.verdict === 'Buy' ? 'var(--buy)' : '#ECE8E1';
+    dot.title = `Price ${pt.money(price)}`;
+    track.append(tick, dot);
+    const ends = document.createElement('div'); ends.className = 'ends';
+    ends.innerHTML = '<span></span><span></span>';
+    ends.children[0].textContent = `Price ${pt.money(price)}`;
+    ends.children[1].textContent = `Scale ${pt.usd(lo)} to ${pt.usd(hi)}`;
+    box.append(marks, track, ends);
+    el.appendChild(box);
+  });
+  // Splits a report into its title, opening paragraphs, first-page sections, and the technical parts (A to F).
+  function splitReport(md) {
+    const lines = md.replace(/\r/g, '').split('\n');
+    const intro = []; const secs = []; let cur = null; let tech = null;
+    for (const line of lines) {
+      if (/^#\s/.test(line)) continue;
+      if (/^<!--\s*price-blind:start/.test(line)) { tech = { title: 'The full analysis', body: [] }; cur = tech; continue; }
+      const h = line.match(/^##\s+(.*)$/);
+      if (h && !tech) { cur = { title: h[1].trim(), body: [] }; secs.push(cur); continue; }
+      if (/^\*\*The numbers\*\*/.test(line) && !tech) { cur = { title: 'The numbers', body: [] }; secs.push(cur); continue; }
+      if (/^---\s*$/.test(line) && !tech) { cur = null; continue; }
+      if (cur) cur.body.push(line); else if (!tech) intro.push(line);
+    }
+    if (tech) secs.push(tech);
+    const paras = intro.join('\n').split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean);
+    return { paras, secs: secs.filter((s) => s.body.join('').trim()) };
+  }
+  dash.draw('av-summary', (el) => {
+    const t = dash.params().ticker;
+    const a = dash.data('analyses');
+    el.replaceChildren();
+    if (!t) return;
+    if (a.status === 'loading') { el.textContent = '—'; return; }
+    if (a.status === 'error') { el.textContent = 'The analysis did not load.'; return; }
+    const doc = a.data.find((r) => r.ticker === t);
+    if (!doc) { el.textContent = 'No analysis yet. Ask Claude to analyze this holding.'; return; }
+    const { paras } = splitReport(doc.text);
+    // The first paragraph restates the numbers shown above; the next real paragraph is the plain-English story.
+    const story = paras.filter((p) => !p.startsWith('>') && !/^This is analysis for/.test(p));
+    inline(el, (story[1] || story[0] || '').replace(/\n/g, ' '));
+  });
+  dash.draw('av-facts', (el) => {
+    const { t, rec } = openRec();
+    el.replaceChildren();
+    if (!t || !rec || rec.status !== 'analyzed' || rec.fair_value === null || rec.fair_value === undefined) { el.hidden = true; return; }
+    el.hidden = false;
+    const add = (label, value, sub, field) => {
+      const d = document.createElement('div');
+      const dt = document.createElement('dt'); dt.textContent = label;
+      const dd = document.createElement('dd'); dd.textContent = value;
+      if (sub) { const s = document.createElement('small'); s.textContent = sub; dd.appendChild(s); }
+      if (field) { dd.setAttribute('data-source', 'valuations'); dd.setAttribute('data-where', 'ticker=' + encodeURIComponent(t)); dd.setAttribute('data-field', field); }
+      d.append(dt, dd); el.appendChild(d);
+    };
+    add('Yearly return at today’s price', pt.retText(rec), rec.required_return ? `needs ${d3.format('.1%')(rec.required_return)} for its risk` : '', 'price_implied_return');
+    add('Confidence', rec.confidence || '—', '', 'confidence');
+    add('Bad case', pt.money(rec.range_low), 'value per share', 'range_low');
+    add('Good case', pt.money(rec.range_high), 'value per share', 'range_high');
+    add('Next review', rec.next_review ? d3.utcFormat('%b %-d, %Y')(new Date(rec.next_review)) : '—', '', 'next_review');
+  });
+  dash.draw('av-sections', (el) => {
+    const t = dash.params().ticker;
+    const a = dash.data('analyses');
+    el.replaceChildren();
+    if (!t || a.status !== 'ok') return;
+    const doc = a.data.find((r) => r.ticker === t);
+    if (!doc) return;
+    const { secs } = splitReport(doc.text);
+    for (const s of secs) {
+      const d = document.createElement('details');
+      const sm = document.createElement('summary'); sm.textContent = s.title;
+      const inner = document.createElement('div'); inner.className = 'inner';
+      const art = document.createElement('div'); art.className = 'pt-doc';
+      art.setAttribute('data-source', 'analyses'); art.setAttribute('data-where', 'ticker=' + encodeURIComponent(t)); art.setAttribute('data-field', 'text');
+      renderMarkdown(art, s.body.join('\n'));
+      inner.appendChild(art); d.append(sm, inner); el.appendChild(d);
+    }
+  });
+  dash.draw('av-date', (el) => {
+    const t = dash.params().ticker;
+    const a = dash.data('analyses');
+    if (!t || a.status !== 'ok') { el.textContent = ''; return; }
+    const doc = a.data.find((r) => r.ticker === t);
+    el.textContent = doc
+      ? `Analysis dated ${d3.utcFormat('%B %-d, %Y')(new Date(doc.date))}${doc.older_reports ? `. ${doc.older_reports} older report${doc.older_reports > 1 ? 's' : ''} on file` : ''}. Prices and the under- or overpriced figure update with each price refresh. Account moves live in the monthly meeting.`
+      : '';
+  });
+
+  // A small Markdown renderer. It builds nodes with textContent, so report text can never run as code.
+  function inline(parent, text) {
+    const re = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\))/g;
+    let last = 0, m;
+    while ((m = re.exec(text))) {
+      if (m.index > last) parent.appendChild(document.createTextNode(text.slice(last, m.index)));
+      let node;
+      if (m[2] !== undefined) { node = document.createElement('strong'); node.textContent = m[2]; }
+      else if (m[3] !== undefined) { node = document.createElement('em'); node.textContent = m[3]; }
+      else if (m[4] !== undefined) { node = document.createElement('code'); node.textContent = m[4]; }
+      else if (/^https?:\/\//.test(m[6])) { node = document.createElement('a'); node.href = m[6]; node.target = '_blank'; node.rel = 'noopener'; node.textContent = m[5]; }
+      else { node = document.createTextNode(m[5]); }
+      parent.appendChild(node);
+      last = re.lastIndex;
+    }
+    if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
+  }
+  function renderMarkdown(root, md) {
+    const lines = md.replace(/\r/g, '').split('\n');
+    const isBlockStart = (l) => /^(#{1,4}\s|```|\s*\||\s*([-*]|\d+\.)\s|>)/.test(l);
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line.trim() || /^<!--.*-->$/.test(line.trim()) || /^---\s*$/.test(line)) { i++; continue; }
+      if (line.startsWith('```')) {
+        const pre = document.createElement('pre'); const code = []; i++;
+        while (i < lines.length && !lines[i].startsWith('```')) code.push(lines[i++]);
+        pre.textContent = code.join('\n'); root.appendChild(pre); i++; continue;
+      }
+      const h = line.match(/^(#{1,4})\s+(.*)$/);
+      if (h) { const el = document.createElement('h' + Math.min(4, h[1].length + 1)); inline(el, h[2]); root.appendChild(el); i++; continue; }
+      if (/^\s*\|/.test(line)) {
+        const rows = [];
+        while (i < lines.length && /^\s*\|/.test(lines[i])) rows.push(lines[i++]);
+        const split = (r) => r.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+        const wrap = document.createElement('div'); wrap.className = 'pt-wrap';
+        const table = document.createElement('table');
+        rows.filter((r) => !/^\s*\|[\s:|-]+\|\s*$/.test(r)).forEach((r, ri) => {
+          const tr = document.createElement('tr');
+          split(r).forEach((c) => { const td = document.createElement(ri === 0 ? 'th' : 'td'); td.className = 'l'; inline(td, c); tr.appendChild(td); });
+          table.appendChild(tr);
+        });
+        wrap.appendChild(table); root.appendChild(wrap); continue;
+      }
+      if (/^\s*([-*]|\d+\.)\s+/.test(line)) {
+        const list = document.createElement(/^\s*\d+\./.test(line) ? 'ol' : 'ul');
+        while (i < lines.length && /^\s*([-*]|\d+\.)\s+/.test(lines[i])) {
+          const li = document.createElement('li'); inline(li, lines[i].replace(/^\s*([-*]|\d+\.)\s+/, '')); list.appendChild(li); i++;
+        }
+        root.appendChild(list); continue;
+      }
+      if (line.startsWith('>')) {
+        const q = document.createElement('blockquote'); const parts = [];
+        while (i < lines.length && lines[i].startsWith('>')) parts.push(lines[i++].replace(/^>\s?/, ''));
+        inline(q, parts.join(' ')); root.appendChild(q); continue;
+      }
+      const para = [line]; i++;
+      while (i < lines.length && lines[i].trim() && !isBlockStart(lines[i])) para.push(lines[i++]);
+      const p = document.createElement('p'); inline(p, para.join(' ')); root.appendChild(p);
+    }
+  }
+</script>

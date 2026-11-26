@@ -1,0 +1,85 @@
+{
+  "_about": "FICTIONAL sample for testing the kit. Every number here is made up. Copy to data/holdings.json only to test the scripts; your real file is created from your brokerage screenshots by the portfolio-sync skill.",
+  "as_of": "2026-01-02",
+  "source": "Fictional example",
+  "accounts": [
+    {
+      "id": "retirement-ira",
+      "name": "Retirement IRA",
+      "broker": "Example Brokerage",
+      "tax_type": "traditional",
+      "purpose": "Retirement, 25+ years",
+      "total_value": 28940.0,
+      "cash": 350.0,
+      "positions": [
+        {
+          "ticker": "VOO",
+          "name": "Vanguard S&P 500 ETF",
+          "type": "fund",
+          "shares": 42,
+          "price": 540.0,
+          "market_value": 22680.0,
+          "cost_basis": 15800.0
+        },
+        {
+          "ticker": "AGG",
+          "name": "iShares Core US Aggregate Bond ETF",
+          "type": "fund",
+          "shares": 60,
+          "price": 98.5,
+          "market_value": 5910.0,
+          "cost_basis": 6100.0,
+          "stock_exposure": 0
+        }
+      ]
+    },
+    {
+      "id": "brokerage",
+      "name": "Brokerage",
+      "broker": "Example Brokerage",
+      "tax_type": "taxable",
+      "purpose": "Long-term investing; part may fund a goal in about 5 years",
+      "total_value": 18075.0,
+      "cash": 1200.0,
+      "positions": [
+        {
+          "ticker": "JPM",
+          "name": "JPMorgan Chase & Co.",
+          "type": "stock",
+          "shares": 15,
+          "price": 240.0,
+          "market_value": 3600.0,
+          "cost_basis": 2700.0
+        },
+        {
+          "ticker": "KO",
+          "name": "The Coca-Cola Company",
+          "type": "stock",
+          "shares": 80,
+          "price": 68.0,
+          "market_value": 5440.0,
+          "cost_basis": 4900.0
+        },
+        {
+          "ticker": "JNJ",
+          "name": "Johnson & Johnson",
+          "type": "stock",
+          "shares": 25,
+          "price": 155.0,
+          "market_value": 3875.0,
+          "cost_basis": 4000.0
+        },
+        {
+          "ticker": "V",
+          "name": "Visa Inc. Class A",
+          "type": "stock",
+          "shares": 12,
+          "price": 330.0,
+          "market_value": 3960.0,
+          "cost_basis": 2900.0
+        }
+      ]
+    }
+  ],
+  "private_holdings": []
+}

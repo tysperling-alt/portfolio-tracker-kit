@@ -1,0 +1,43 @@
+{
+  "_notes": "Template for scripts/dcf.py. Copy to analyses/<TICKER>/<DATE>-model.json and replace every value. Field meanings: references/valuation.md, 'The model file'. Money and share counts use one scale (for example both in millions). Rates are decimals. Delete this _notes key or leave it; the script ignores it.",
+  "ticker": "TICKER",
+  "currency": "USD",
+  "basis": "equity",
+  "model_date": "YYYY-MM-DD",
+  "valuation_date": "YYYY-MM-DD",
+  "first_forecast_year_end": "YYYY-MM-DD",
+  "discount_rate": 0.0,
+  "risk_free_used": 0.0,
+  "risk_free_observed": 0.0,
+  "mid_period": true,
+  "payouts_per_share_since_model_date": 0.0,
+  "scenarios": {
+    "stress": {
+      "cash_flows": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      "terminal": {"method": "value_driver", "next_year_earnings": 0, "growth": 0.0, "return_on_new_capital": 0.0},
+      "claims": {"excess_cash": 0, "other_assets": 0, "other_claims": 0},
+      "diluted_shares": 0
+    },
+    "bear": {
+      "probability": 0.25,
+      "cash_flows": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      "terminal": {"method": "value_driver", "next_year_earnings": 0, "growth": 0.0, "return_on_new_capital": 0.0},
+      "claims": {"excess_cash": 0, "other_assets": 0, "other_claims": 0},
+      "diluted_shares": 0
+    },
+    "base": {
+      "probability": 0.5,
+      "cash_flows": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      "terminal": {"method": "value_driver", "next_year_earnings": 0, "growth": 0.0, "return_on_new_capital": 0.0},
+      "claims": {"excess_cash": 0, "other_assets": 0, "other_claims": 0},
+      "diluted_shares": 0
+    },
+    "bull": {
+      "probability": 0.25,
+      "cash_flows": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      "terminal": {"method": "value_driver", "next_year_earnings": 0, "growth": 0.0, "return_on_new_capital": 0.0},
+      "claims": {"excess_cash": 0, "other_assets": 0, "other_claims": 0},
+      "diluted_shares": 0
+    }
+  }
+}

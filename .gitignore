@@ -1,0 +1,25 @@
+# Your personal financial data never goes to git by default.
+# If your fork is PRIVATE and you want version history of your data, see the README,
+# "Keeping your data in git", before removing any line below.
+data/holdings.json
+data/prices.json
+data/trades.jsonl
+data/investor-profile.json
+data/targets.json
+data/valuations/
+context/
+analyses/
+reviews/
+docs/method-log.md
+
+# Generated page data
+build/
+
+# Python
+__pycache__/
+*.pyc
+.DS_Store
+
+# Local Claude settings and review stamps
+.claude/settings.local.json
+.claude/reviews/
