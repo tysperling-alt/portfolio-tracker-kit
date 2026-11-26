@@ -1,0 +1,15 @@
+{
+ "rows": [
+  {
+   "date": "2026-01-02",
+   "title": "January meeting (sample)",
+   "text": "# January meeting (sample)\n\n## Where you stand\n\nYour accounts are worth about $143,291. Over the past year your holdings returned 11.9%, against 12.7% for the S&P 500. (Sample letter: every number is fictional.)\n\n## What I recommend, in order\n\n**1. Rebalance inside the IRA first (no tax).** Trades there cost nothing in tax.\n\n**2. Trim Luma Software in the brokerage account.** It is well above my value and is your largest single stock there.\n\n**3. Add to the total market fund with new money.** It keeps you diversified at low cost.\n\n**4. Keep three months of expenses in cash.** Your emergency fund sits outside these accounts.\n\n## Next meeting\n\nNext month, after the quarterly reports.\n"
+  }
+ ],
+ "meta": [
+  {
+   "label": "Sample data",
+   "value": "Every company, number and letter in this folder is fictional. It exists only to preview the tracker."
+  }
+ ]
+}

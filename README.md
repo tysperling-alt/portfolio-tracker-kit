@@ -6,6 +6,18 @@ You clone this repo, open Claude Code in it, and share screenshots of your posit
 
 **This is not financial advice.** It is a tool for your own analysis. Claude never places trades, never logs in to your brokerage, and can be wrong. Check anything important with a licensed professional.
 
+## What it looks like
+
+Every company and number below is made up. Your page shows your own holdings.
+
+![The overview: total value over a photo of the Charging Bull](docs/preview-1-overview.jpg)
+
+![Company tiles sized by holding, each with a call and how far the price is from its value](docs/preview-2-companies.jpg)
+
+![Tapping a company opens its analysis: how under- or overpriced it is, with the buy and sell lines](docs/preview-3-analysis.jpg)
+
+![The analysis continues with a short summary, key numbers, and sections you can open](docs/preview-4-analysis-details.jpg)
+
 ## What the tracker shows
 
 - Your total value, today's change, and your gain over what you paid, for all accounts or one at a time.
@@ -61,6 +73,8 @@ By default your data is never committed. If your fork is **private** and you wan
 | `CLAUDE.md` | Setup and upkeep steps for Claude |
 | `.claude/skills/` | The three skills: `portfolio-sync`, `analyze-stock`, `portfolio-review` |
 | `page/index.html` | The tracker page |
+| `docs/` | Preview screenshots with made-up data |
+| `examples/demo/` | Made-up dashboard data for the live sample |
 | `page/photos/` | AI-generated photos for the page (a bull for the hero and a skyline for fund pages; CLAUDE.md explains how to make company photos) |
 | `scripts/` | Price refresh, page-data build, and data checks |
 | `examples/` | Fictional sample files that show each personal file's shape |

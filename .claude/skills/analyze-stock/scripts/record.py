@@ -166,7 +166,7 @@ def parse_dt(text, where):
     except ValueError:
         die(f"{where}: {text!r} is not an ISO date-time")
     if d.tzinfo is None:
-        die(f"{where}: add a time zone offset, for example 2026-01-05T13:02:00-08:00")
+        die(f"{where}: add a time zone offset, for example 2026-01-05T21:02:00+00:00")
     return d
 
 

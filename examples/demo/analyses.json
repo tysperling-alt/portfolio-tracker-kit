@@ -1,0 +1,46 @@
+{
+ "rows": [
+  {
+   "ticker": "NWND",
+   "date": "2026-01-02",
+   "older_reports": 0,
+   "text": "# Northwind Logistics (NWND): Buy\n\nNorthwind Logistics is a Buy at $182.40. I value it at $268.00. At today's price you earn about 11.2% a year if my forecast is right, against the 8.2% this stock should earn for its risk. I would buy below $214.40 and sell above $321.60. (Sample report: the company and every number are fictional.)\n\nNorthwind runs regional warehouses and next-day trucking for mid-size online sellers. Its contracts run three years and renew at higher prices, and it is opening four new hubs. The main uncertainty is whether a price war with larger carriers squeezes its margins.\n\n## The business\n\nSellers pay Northwind to store goods and ship them within a day. It wins on speed in regions the big carriers serve slowly. Most customers sign three-year contracts.\n\n## What the company is betting on\n\nNorthwind is betting that four new hubs fill within two years. Each hub costs about $60 million and earns its cost back in roughly five years once full.\n\n## What the price asks you to believe\n\nThe price assumes growth slows to about 3% a year and margins slip. My middle case expects 8% growth for five years as the new hubs fill, then a fade.\n\n## How wrong I could be\n\nIn my bad case, a price war cuts margins in half and a share is worth $150. In my good case, the hubs fill early and a share is worth $410. Confidence is Medium.\n\n## What would change my mind\n\nUp: two new hubs above 80% full by next year. Down: contract renewals at lower prices.\n\n**The numbers**\n\n| | |\n|---|---|\n| Call | Buy |\n| Price | $182.40 |\n| My value | $268.00 |\n| Buy below / sell above | $214.40 / $321.60 |\n| Confidence | Medium |\n\nThis is analysis for the owner's own decisions. It is not licensed financial advice.\n"
+  },
+  {
+   "ticker": "ACME",
+   "date": "2026-01-02",
+   "older_reports": 0,
+   "text": "# Acme Robotics (ACME): Hold\n\nAcme Robotics is a Hold at $214.75. I value it at $205.00. (Sample report: the company and every number are fictional.)\n\nThis sample shows how a full report reads. A real report covers the business, what the company is betting on, what the price asks you to believe, how wrong the value could be, and what would change the call.\n\n## The business\n\nA fictional company used to preview the tracker.\n"
+  },
+  {
+   "ticker": "ORBT",
+   "date": "2026-01-02",
+   "older_reports": 0,
+   "text": "# Orbital Freight (ORBT): Sell\n\nOrbital Freight is a Sell at $96.20. I value it at $61.00. (Sample report: the company and every number are fictional.)\n\nThis sample shows how a full report reads. A real report covers the business, what the company is betting on, what the price asks you to believe, how wrong the value could be, and what would change the call.\n\n## The business\n\nA fictional company used to preview the tracker.\n"
+  },
+  {
+   "ticker": "HLXE",
+   "date": "2026-01-02",
+   "older_reports": 0,
+   "text": "# Helix Energy Storage (HLXE): Hold\n\nHelix Energy Storage is a Hold at $44.10. I value it at $47.50. (Sample report: the company and every number are fictional.)\n\nThis sample shows how a full report reads. A real report covers the business, what the company is betting on, what the price asks you to believe, how wrong the value could be, and what would change the call.\n\n## The business\n\nA fictional company used to preview the tracker.\n"
+  },
+  {
+   "ticker": "CEDR",
+   "date": "2026-01-02",
+   "older_reports": 0,
+   "text": "# Cedar Health (CEDR): Buy\n\nCedar Health is a Buy at $58.30. I value it at $79.00. (Sample report: the company and every number are fictional.)\n\nThis sample shows how a full report reads. A real report covers the business, what the company is betting on, what the price asks you to believe, how wrong the value could be, and what would change the call.\n\n## The business\n\nA fictional company used to preview the tracker.\n"
+  },
+  {
+   "ticker": "LUMA",
+   "date": "2026-01-02",
+   "older_reports": 0,
+   "text": "# Luma Software (LUMA): Sell\n\nLuma Software is a Sell at $311.00. I value it at $190.00. (Sample report: the company and every number are fictional.)\n\nThis sample shows how a full report reads. A real report covers the business, what the company is betting on, what the price asks you to believe, how wrong the value could be, and what would change the call.\n\n## The business\n\nA fictional company used to preview the tracker.\n"
+  }
+ ],
+ "meta": [
+  {
+   "label": "Sample data",
+   "value": "Every company, number and letter in this folder is fictional. It exists only to preview the tracker."
+  }
+ ]
+}

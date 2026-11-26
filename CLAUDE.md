@@ -13,9 +13,44 @@ Rules that always apply:
 - Write to the owner in plain, short sentences. Define any finance term the first time you use it.
 - State dates and times in the owner's local time zone.
 
+## First message
+
+When someone opens this repo for the first time, or gives you its link, your first reply introduces the kit and lets them decide before they share anything. Send it before you read any of their files or ask for data. Do it whenever `data/holdings.json` does not exist yet.
+
+1. **Show what it looks like.** Send the four preview images in `docs/` (use your tool for sending files to the user if you have one; otherwise tell them the images are in the repo's README on GitHub, where they show inline). Say clearly that every company and number in them is made up.
+2. **Send this message**, in your own voice, kept close to this:
+
+   > This kit builds you a private dashboard of your investments, as a page in your own claude.ai account. Here's what it looks like, filled with made-up companies so you can judge it first.
+   >
+   > **What you get:** your total and accounts at a glance; a photo tile for each stock, sized by how much you own, with a Buy, Hold, or Sell call and how far its price is above or below a value I work out; your returns against the S&P 500 over 1 month to 10 years; and a short monthly letter on what, if anything, to change.
+   >
+   > **How it works:**
+   > 1. You send a screenshot of each account's holdings.
+   > 2. I read it, ask a few plain questions about what each account is for, and build your page. About 10 to 15 minutes.
+   > 3. Prices update when you ask (or weekly, if you want). I can also value your larger stocks one at a time.
+   >
+   > **Privacy:** your numbers stay on your computer and in your private claude.ai page. They are never added to this repo. Crop out account numbers before you send anything. This is analysis to help you think, not licensed financial advice, and I never place trades.
+   >
+   > Want to click around a live sample first? I can publish the made-up version to your claude.ai in a couple of minutes.
+   >
+   > If you'd like to go ahead, send a screenshot of your investment allocation: the positions page of each account, showing each holding's shares or value. The cost basis column helps but is optional.
+
+3. **Then wait.** If they ask for the live sample, follow "Live sample" below. If they send screenshots, go to "First run". If they decline, stop; do not ask again in that conversation.
+
+## Live sample
+
+Publishes the dashboard filled with the fictional data in `examples/demo/`, so the person can try it before sharing anything. It uses the same steps as "4. Create the artifact" under "First run", with these differences:
+
+- Title the artifact "Portfolio Tracker Sample".
+- Upload the six files in `examples/demo/` instead of `build/`, plus `page/photos/HERO.jpg` and `page/photos/SKYLINE.jpg`.
+- In the page you store as `files/index.html`, set `OWNER_TITLE` to `'Sample portfolio'`, `HERO` to the bull photo's `/_blob/` address, and `FUND_PHOTO` to the skyline's. Leave `PHOTOS` empty; the sample companies show as dark tiles. Do not change `page/index.html` on disk.
+- Mark every dataset `fixed: true` and say "Sample data, fictional" in its `updated.by`.
+
+Tell them it is a sample with made-up companies, and that their real page will be a separate one. Then repeat the screenshot request from "First message".
+
 ## First run
 
-Start here when `data/holdings.json` does not exist. Tell the owner in one line what you are about to do, then work through the steps. Ask questions in small batches, in plain words.
+Start here when `data/holdings.json` does not exist and the person has sent screenshots (see "First message" first). Tell the owner in one line what you are about to do, then work through the steps. Ask questions in small batches, in plain words.
 
 ### 1. Holdings from screenshots
 

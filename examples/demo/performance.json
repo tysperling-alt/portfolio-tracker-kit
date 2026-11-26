@@ -1,0 +1,90 @@
+{
+ "rows": [
+  {
+   "group": "Retirement IRA",
+   "group_id": "retirement-ira",
+   "value": 76125.0,
+   "day": -0.0042,
+   "1m": 0.021,
+   "1m_coverage": 1.0,
+   "3m": 0.048,
+   "3m_coverage": 1.0,
+   "ytd": 0.112,
+   "ytd_coverage": 1.0,
+   "1y": 0.134,
+   "1y_coverage": 1.0,
+   "3y": 0.41,
+   "3y_coverage": 1.0,
+   "5y": 0.72,
+   "5y_coverage": 1.0,
+   "10y": 1.96,
+   "10y_coverage": 1.0
+  },
+  {
+   "group": "Brokerage",
+   "group_id": "brokerage",
+   "value": 67165.75,
+   "day": 0.0031,
+   "1m": 0.012,
+   "1m_coverage": 1.0,
+   "3m": 0.036,
+   "3m_coverage": 1.0,
+   "ytd": 0.088,
+   "ytd_coverage": 1.0,
+   "1y": 0.102,
+   "1y_coverage": 1.0,
+   "3y": 0.33,
+   "3y_coverage": 1.0,
+   "5y": 0.61,
+   "5y_coverage": 1.0,
+   "10y": 1.71,
+   "10y_coverage": 1.0
+  },
+  {
+   "group": "All accounts",
+   "group_id": "all",
+   "value": 143290.75,
+   "day": -0.0011,
+   "1m": 0.017,
+   "1m_coverage": 1.0,
+   "3m": 0.043,
+   "3m_coverage": 1.0,
+   "ytd": 0.101,
+   "ytd_coverage": 1.0,
+   "1y": 0.119,
+   "1y_coverage": 1.0,
+   "3y": 0.37,
+   "3y_coverage": 1.0,
+   "5y": 0.67,
+   "5y_coverage": 1.0,
+   "10y": 1.84,
+   "10y_coverage": 1.0
+  },
+  {
+   "group": "S&P 500 (SPY)",
+   "group_id": "spy",
+   "value": null,
+   "day": -0.0008,
+   "1m": 0.015,
+   "1m_coverage": 1.0,
+   "3m": 0.039,
+   "3m_coverage": 1.0,
+   "ytd": 0.094,
+   "ytd_coverage": 1.0,
+   "1y": 0.127,
+   "1y_coverage": 1.0,
+   "3y": 0.39,
+   "3y_coverage": 1.0,
+   "5y": 0.7,
+   "5y_coverage": 1.0,
+   "10y": 1.9,
+   "10y_coverage": 1.0
+  }
+ ],
+ "meta": [
+  {
+   "label": "Sample data",
+   "value": "Every company, number and letter in this folder is fictional. It exists only to preview the tracker."
+  }
+ ]
+}
